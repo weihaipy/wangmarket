@@ -9,6 +9,7 @@ import com.xnx3.wangmarket.admin.entity.SiteData;
 import com.xnx3.wangmarket.admin.vo.SiteRemainHintVO;
 import com.xnx3.wangmarket.admin.vo.SiteVO;
 import com.xnx3.wangmarket.admin.vo.bean.TemplateCommon;
+import com.xnx3.wangmarket.domain.bean.MQBean;
 import com.xnx3.wangmarket.superadmin.entity.Agency;
 
 /**
@@ -20,11 +21,11 @@ public interface SiteService {
 	/**
 	 * 创建／修改站点。若是 site.id 大于0，则是修改站点
 	 * @param s {@link Site} 要增加或者修改的site对象
-	 * @param siteUserId 站点所属人的用户id，或根据此来判断站点是否属于此人，是否可修改
+	 * @param siteCreateUserId 站点创建人的用户id
 	 * @param request
 	 * @return {@link SiteVO}
 	 */
-	public SiteVO saveSite(Site s, int siteUserId, HttpServletRequest request);
+	public SiteVO saveSite(Site s, int siteCreateUserId, HttpServletRequest request);
 	
 	
 	/**
@@ -71,12 +72,10 @@ public interface SiteService {
 	public boolean isPcClient(Site site);
 	
 	/**
-	 * 传入一个站点编号，通过其来调度域名服务器更新域名
-	 * 共更新六次，同支付宝返回结果般，第一次即时请求，若不成功，会等待10秒后在次请求，若不成功等待1分钟再次请求，以此类推，连续6次，持续时间3.11小时
-	 * @param siteid
+	 * 当网站的二级域名、绑定域名、以及网站状态发生变化时，更新此处。
 	 */
 //	public void updateDomainServers(int siteid);
-	public void updateDomainServers(Site site);
+	public void updateDomainServers(MQBean mqBean);
 	
 	/**
 	 * 修改、新增、隐藏某个栏目后，设置 Site.columnId，这里返回columnId的值
@@ -113,7 +112,7 @@ public interface SiteService {
 	 * @param id site.id 
 	 * @return {@link SiteVO}
 	 */
-	public SiteVO findByIdForCurrentUser(int id);
+//	public SiteVO findByIdForCurrentUser(int id);
 	
 	/**
 	 * 获取网站的过期时间以及提示说明（联系的直属上级代理）提示让其找上级代理续费

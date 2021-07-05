@@ -1,13 +1,10 @@
 package com.xnx3.wangmarket.admin.pluginManage;
 
 import java.lang.reflect.InvocationTargetException;
-import java.lang.reflect.Method;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-
 import org.springframework.stereotype.Component;
-
 import com.xnx3.ScanClassUtil;
 import com.xnx3.j2ee.func.Log;
 import com.xnx3.wangmarket.admin.pluginManage.anno.PluginRegister;
@@ -26,8 +23,8 @@ public class PluginManage {
 	
 	//网站管理后台相关的插件，key：插件名字，如自定义表单插件，便是 formManage
 	public static Map<String, SitePluginBean> cmsSiteClassManage;
-	public static Map<String, SitePluginBean> wapSiteClassManage;
-	public static Map<String, SitePluginBean> pcSiteClassManage;
+	public static Map<String, SitePluginBean> wapSiteClassManage;	//这种模式废弃了
+	public static Map<String, SitePluginBean> pcSiteClassManage;	//这种模式废弃了
 	public static Map<String, SitePluginBean> agencyClassManage;
 	public static Map<String, SitePluginBean> superAdminClassManage;
 	static{
@@ -60,7 +57,6 @@ public class PluginManage {
 		PluginRegister an = (PluginRegister) c.getAnnotation(PluginRegister.class);
         if(an != null){
         	SitePluginBean sitePlugin = new SitePluginBean(c);
-        	Log.info(sitePlugin.toString());
         	if(sitePlugin.isApplyToCMS()){
         		cmsSiteClassManage.put(sitePlugin.getId(), sitePlugin);	//将之加入内存中持久化，以便随时使用
         	}
@@ -71,7 +67,6 @@ public class PluginManage {
         		pcSiteClassManage.put(sitePlugin.getId(), sitePlugin);	//将之加入内存中持久化，以便随时使用
         	}
         	if(sitePlugin.isApplyToAgency()){
-        		Log.info("进入agency。。。。"+sitePlugin.toString());
         		agencyClassManage.put(sitePlugin.getId(), sitePlugin);	//将之加入内存中持久化，以便随时使用
         	}
         	if(sitePlugin.isApplyToSuperAdmin()){

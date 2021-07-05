@@ -2,10 +2,7 @@
 <%@ page language="java" contentType="text/html; charset=UTF-8" pageEncoding="UTF-8"%>
 <%@ taglib uri="http://java.sun.com/jsp/jstl/core" prefix="c" %>
 <%@ taglib uri="http://www.xnx3.com/java_xnx3/xnx3_tld" prefix="x" %>
-<%@ taglib prefix="fmt" uri="http://java.sun.com/jsp/jstl/fmt" %><%
-String path = request.getContextPath();
-String basePath = request.getScheme()+"://"+request.getServerName()+":"+request.getServerPort()+path+"/";
-%>
+<%@ taglib prefix="fmt" uri="http://java.sun.com/jsp/jstl/fmt" %>
 <jsp:include page="../../iw/common/head.jsp">
 	<jsp:param name="title" value="登录"/>
 </jsp:include>
@@ -58,11 +55,10 @@ String basePath = request.getScheme()+"://"+request.getServerName()+":"+request.
 </style>
 
 <!-- 背景 -->
-<div class="layui-canvs" style="position: fixed;top: 0px;left: 0px;z-index: -1;"></div>
 
 <form class="layui-form layui-elem-quote layui-quote-nm myForm">
   <div class="layui-form-item touming" style="height: 70px;background-color: #eeeeee;line-height: 70px;text-align: center;font-size: 25px;color: #3F4056;">
-    <%=Global.get("SITE_NAME") %> 云建站平台登陆
+    <%=Global.get("SITE_NAME") %> 平台登陆
   </div>
   <div style="padding: 30px 50px 40px 0px;">
   	<div class="layui-form-item">
@@ -104,10 +100,10 @@ String basePath = request.getScheme()+"://"+request.getServerName()+":"+request.
 <![endif]-->
 
 <!-- weui -->
-<script src="http://res.weiunity.com/js/jquery-2.1.4.js"></script>
-<script src="http://res.weiunity.com/js/jquery-weui.js"></script>
-<link rel="stylesheet" href="http://res.weiunity.com/css/weui.min.css">
-<link rel="stylesheet" href="http://res.weiunity.com/css/jquery-weui.css">
+<script src="${STATIC_RESOURCE_PATH}js/jquery-2.1.4.js"></script>
+<script src="${STATIC_RESOURCE_PATH}js/jquery-weui.js"></script>
+<link rel="stylesheet" href="${STATIC_RESOURCE_PATH}css/weui.min.css">
+<link rel="stylesheet" href="${STATIC_RESOURCE_PATH}css/jquery-weui.css">
 <script>
 //Demo
 layui.use('form', function(){
@@ -115,13 +111,18 @@ layui.use('form', function(){
   
   //监听提交
   form.on('submit(formDemo)', function(data){
-  	$.showLoading('登录中...');
+	iw.loading("登陆中...");
+  	//$.showLoading('登录中...');
     var d=$("form").serialize();
-	$.post("<%=basePath %>loginSubmit.do", d, function (result) {
-		$.hideLoading();
+	$.post("loginSubmit.do", d, function (result) {
+		//$.hideLoading();
+		iw.loadClose();
        	var obj = JSON.parse(result);
+       	try{
+       		console.log(obj);
+       	}catch(e){}
        	if(obj.result == '1'){
-       		layer.msg('登陆成功', {shade: 0.3});
+       		iw.msgSuccess("登陆成功！");
        		window.location.href=obj.info;
        	}else if(obj.result == '0'){
        		//登陆失败
@@ -174,25 +175,5 @@ if(navigator.userAgent.indexOf('Chrome') == -1){
 </script>
 
 
-<!-- 以下为背景特效相关 -->
-<script type="text/javascript">
-'use strict';
-layui.use(['jquery'],function(){
-	window.jQuery = window.$ = layui.jquery;
-   $(".layui-canvs").width($(window).width());
-   $(".layui-canvs").height($(window).height());
-
-});
-</script>
-<script type="text/javascript" src="http://res.weiunity.com/js/jparticle.jquery.js"></script>
-<script type="text/javascript">
-$(function(){
-	$(".layui-canvs").jParticle({
-		background: "#FFFFFF",
-		color: "#FDFDFD"
-	});
-});
-</script>
-<!-- 背景特效相关结束 -->
 </body>
 </html>

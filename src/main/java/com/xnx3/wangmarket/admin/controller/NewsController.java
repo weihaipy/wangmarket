@@ -1,18 +1,18 @@
-package com.xnx3.wangmarket.admin.controller;
+ package com.xnx3.wangmarket.admin.controller;
 
+import java.lang.reflect.InvocationTargetException;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-
 import javax.annotation.Resource;
 import javax.servlet.http.HttpServletRequest;
-
+import javax.servlet.http.HttpServletResponse;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseBody;
-
 import com.xnx3.BaseVO;
 import com.xnx3.DateUtil;
 import com.xnx3.Lang;
@@ -22,14 +22,15 @@ import com.xnx3.j2ee.func.TextFilter;
 import com.xnx3.j2ee.service.SqlService;
 import com.xnx3.j2ee.util.Page;
 import com.xnx3.j2ee.util.Sql;
-import com.xnx3.j2ee.vo.UploadFileVO;
 import com.xnx3.wangmarket.admin.Func;
 import com.xnx3.wangmarket.admin.G;
+import com.xnx3.wangmarket.admin.bean.NewsDataBean;
 import com.xnx3.wangmarket.admin.cache.pc.IndexNews;
 import com.xnx3.wangmarket.admin.entity.News;
 import com.xnx3.wangmarket.admin.entity.NewsData;
 import com.xnx3.wangmarket.admin.entity.Site;
 import com.xnx3.wangmarket.admin.entity.SiteColumn;
+import com.xnx3.wangmarket.admin.pluginManage.newSave.NewsSavePluginManage;
 import com.xnx3.wangmarket.admin.service.InputModelService;
 import com.xnx3.wangmarket.admin.service.NewsService;
 import com.xnx3.wangmarket.admin.service.SiteColumnService;
@@ -40,6 +41,8 @@ import com.xnx3.j2ee.func.AttachmentFile;
 import com.xnx3.wangmarket.admin.vo.NewsVO;
 import com.xnx3.wangmarket.admin.vo.SiteColumnTreeVO;
 import com.xnx3.wangmarket.admin.vo.bean.NewsInit;
+
+import net.sf.json.JSONObject;
 
 /**
  * 图文、新闻
@@ -70,10 +73,10 @@ public class NewsController extends BaseController {
 	@ResponseBody
 	public BaseVO saveNews(News s,
 			@RequestParam(value = "text", required = false , defaultValue="") String text,
-			HttpServletRequest request,Model model){
+			HttpServletRequest request, HttpServletResponse response, Model model){
 		String title = "";
 		if(s.getTitle() != null && s.getTitle().length()>0){
-			title = filter(s.getTitle());
+			title = StringUtil.filterXss(s.getTitle());
 		}else{
 			return error("请输入您页面的名字");
 		}
@@ -81,14 +84,15 @@ public class NewsController extends BaseController {
 			return error("请输入您页面的名字");
 		}
 		
+		Site site = getSite();
 		SiteColumn siteColumn = sqlService.findById(SiteColumn.class, s.getCid());
 		if(siteColumn == null){
 			return error("信息所属栏目不存在");
 		}
-		if(siteColumn.getUserid() - getUserId() != 0){
+		if(siteColumn.getSiteid() - site.getId() != 0){
 			return error("信息所属栏目不属于您，无法操作");
 		}
-		Site site = getSite();
+		
 		
 		News news;
 		NewsData newsData;
@@ -98,10 +102,16 @@ public class NewsController extends BaseController {
 			if(news == null){
 				return error("要操作的页面不存在");
 			}
-			if(news.getUserid() != getUserId()){
+			if(news.getSiteid() - site.getId() != 0){
 				return error("页面不属于您，无法操作！");
 			}
 			newsData = sqlService.findById(NewsData.class, s.getId());
+			
+			//v4.9增加，提高容错。当news表有，单news_data没有时，自动创建
+			if(newsData == null){
+				newsData = new NewsData();
+				newsData.setId(news.getId());
+			}
 		}else{
 			//新增
 			news = new News();
@@ -110,7 +120,7 @@ public class NewsController extends BaseController {
 			news.setOpposenum(0);
 			news.setReadnum(0);
 			news.setStatus(News.STATUS_NORMAL);
-			news.setType(s.getType()==SiteColumn.TYPE_IMAGENEWS? SiteColumn.TYPE_IMAGENEWS:SiteColumn.TYPE_NEWS);
+			news.setType(SiteColumn.TYPE_LIST);
 			news.setUserid(getUserId());
 			news.setAddtime(DateUtil.timeForUnix10());
 			news.setSiteid(siteColumn.getSiteid());
@@ -118,7 +128,7 @@ public class NewsController extends BaseController {
 			newsData = new NewsData();
 		}
 		
-		title = StringUtil.filterHtmlTag(title);
+		title = StringUtil.filterXss(StringUtil.filterHtmlTag(title));
 		if(title != null && title.length() > 60){
 			title = title.substring(0, 60);
 		}
@@ -145,6 +155,7 @@ public class NewsController extends BaseController {
 			}else{
 				intro = textFilterHtml;
 			}
+			intro = intro.replaceAll("nbsp", "");	//过滤掉nbsp标签
 			news.setIntro(intro);
 		}else{
 			//修改News，若表单中穿过来的简介是有值得，那么将表单中传过来的简介的数值进行过滤HTML标签后保存入数据库
@@ -152,21 +163,45 @@ public class NewsController extends BaseController {
 		}
 		
 		news.setTitle(title);
+		news.setReserve1(s.getReserve1() == null? "":s.getReserve1());
+		news.setReserve2(s.getReserve2() == null? "":s.getReserve2());
 		
-		//v3.11废弃，图片单独上传
-		//上传标题图片,只有是图文模式的时候才会有标题图片的上传
-//		String oldTitlePic = "";	//旧的栏目导航图名字
-//		UploadFileVO uploadFileVO = AttachmentFile.uploadImage("site/"+site.getId()+"/news/", request, "titlePicFile", G.NEWS_TITLEPIC_MAXWIDTH);
-//		if(uploadFileVO.getResult() == UploadFileVO.SUCCESS){
-//			oldTitlePic = (news.getTitlepic()==null||news.getTitlepic().length()==0)? "":news.getTitlepic();
-//			news.setTitlepic(uploadFileVO.getFileName());
-//		}
 		//上传的图片
-		news.setTitlepic(StringUtil.filterXss(s.getTitlepic()));
+		String titlepic = StringUtil.filterXss(s.getTitlepic());
+		news.setTitlepic(titlepic == null ? "":titlepic);
+		
+		//插件拦截
+		try {
+			NewsSavePluginManage.interceptNews(request, response, news);
+		} catch (InstantiationException | IllegalAccessException
+				| NoSuchMethodException | SecurityException
+				| IllegalArgumentException | InvocationTargetException e) {
+			e.printStackTrace();
+		}
 		
 		sqlService.save(news);
 		if(news.getId() > 0){
-			boolean have = TextFilter.filter(request, "文章信息发现涉嫌违规："+news.getTitle(), Global.get("MASTER_SITE_URL")+"admin/news/view.do?id="+news.getId(), news.getTitle()+textFilterHtml);
+			
+			//v4.6增加
+			String extend = "";
+			Map<String, String[]> extendMap = new HashMap<String, String[]>();
+			for (Map.Entry<String, String[]> entry : request.getParameterMap().entrySet()) {
+				if(entry.getKey().indexOf("extend.") > -1){
+//					System.out.println("newssave---->"+entry.getKey());
+					//保存入时，将 extend. 过滤掉
+					extendMap.put(entry.getKey().replace("extend.", ""), entry.getValue());
+				}
+			}
+			
+			//有扩展的自定义字段，则进行json转换
+			if(extendMap.size() > 0){
+				JSONObject extendJson = JSONObject.fromObject(extendMap);
+				extend = extendJson.toString();
+			}
+			newsData.setExtend(extend);
+			
+			
+			boolean have = TextFilter.filter(request, "文章信息发现涉嫌违规："+news.getTitle(), Global.get("MASTER_SITE_URL")+"admin/news/view.do?id="+news.getId(), news.getTitle()+textFilterHtml+StringUtil.filterEnglishSpecialSymbol(StringUtil.filterHtmlTag(extend)));
 			if(have){
 				//写入news的合法性字段
 				news.setLegitimate(News.LEGITIMATE_NO);
@@ -175,17 +210,22 @@ public class NewsController extends BaseController {
 			
 			newsData.setId(news.getId());
 			newsData.setText(text);
-			sqlService.save(newsData);
 			
-			//如果有旧图，删除掉旧的图片 v3.11后，图片上传已独立出
-//			if(news.getType() == News.TYPE_IMAGENEWS && oldTitlePic.length() > 0){
-//				AttachmentFile.deleteObject("site/"+site.getId()+"/news/"+oldTitlePic);
-//			}
+			//插件拦截
+			try {
+				NewsSavePluginManage.interceptNewsData(request, response, newsData);
+			} catch (InstantiationException | IllegalAccessException
+					| NoSuchMethodException | SecurityException
+					| IllegalArgumentException | InvocationTargetException e) {
+				e.printStackTrace();
+			}
+			
+			sqlService.save(newsData);
 			
 			if(s.getId() == null || s.getId() == 0){
 				AliyunLog.addActionLog(news.getId(), "新增文章成功，文章："+news.getTitle());
-				//刷新sitemap
-				siteService.refreshSiteMap(site);
+				//刷新sitemap，v4.10更新,添加文章时，不再自动生成sitemap.xml，以免数据量大时，新增文章卡顿比较大的问题。
+				//siteService.refreshSiteMap(site);
 			}else{
 				AliyunLog.addActionLog(news.getId(), "修改文章成功，文章："+news.getTitle());
 			}
@@ -193,7 +233,7 @@ public class NewsController extends BaseController {
 			/**
 			 * 生成静态页面
 			 */
-			newsService.generateViewHtml(site, news,siteColumn, text, request);	//生成当前内容页
+			newsService.generateViewHtml(site, news,siteColumn, new NewsDataBean(newsData), request);	//生成当前内容页
 			
 			//如果是通用模式，还要生成列表页。当然，CMS模式是不会生成列表页跟首页的
 			if(!Func.isCMS(site)){
@@ -204,16 +244,6 @@ public class NewsController extends BaseController {
 					//是pc模式，还要刷新首页的数据
 					IndexNews.refreshIndexData(site, siteColumn, newsList);			//PC首页局部刷新
 				}
-				
-				
-//				String pw = siteService.isPcClient(site)? "pc":"wap";
-//				if(site.getClient() - Site.CLIENT_WAP == 0){
-//					//手机页面，那么修改成功后，将直接跳转到内容管理列表中
-//					return success(model, "保存成功", "news/listForTemplate.do?cid="+news.getCid());
-//				}else{
-//					//pc
-//					return success(model, "保存成功！","news/list.do?cid="+news.getCid()+"&client="+pw+"&editMode=edit");
-//				}
 				
 			}else{
 //				return success(model, "保存成功！","news/listForTemplate.do?cid="+news.getCid());
@@ -309,8 +339,18 @@ public class NewsController extends BaseController {
 	    //创建查询语句，只有SELECT、FROM，原生sql查询。其他的where、limit等会自动拼接
 	    sql.setSelectFromAndPage("SELECT * FROM news", page);
 	    
-	    //当用户没有选择排序方式时，系统默认排序。
-	    sql.setDefaultOrderBy("addtime DESC");
+	    //排序方式，通过栏目设置的内容排序，进行判断
+	    if(siteColumn != null && siteColumn.getListRank() != null){
+	    	if(siteColumn.getListRank() - SiteColumn.LIST_RANK_ADDTIME_ASC == 0){
+	    		sql.setDefaultOrderBy("addtime ASC");
+	    	}else{
+	    		sql.setDefaultOrderBy("addtime DESC");
+	    	}
+	    }else{
+	    	//v4.4版本以前，没有自定义内容排序功能，只有按时间倒序排列
+	    	sql.setDefaultOrderBy("addtime DESC");
+	    }
+	    
 	    //因联合查询，结果集是没有实体类与其对应，故而用List<Map>接收
 	    List<News> list = sqlService.findBySql(sql, News.class);
 	     
@@ -321,7 +361,8 @@ public class NewsController extends BaseController {
 	    	StringBuffer columnTreeSB = new StringBuffer();
 		    for (int i = 0; i < siteColumnTreeVOList.size(); i++) {
 		    	SiteColumnTreeVO sct = siteColumnTreeVOList.get(i);
-		    	if(sct.getSiteColumn().getUsed() - SiteColumn.USED_UNABLE == 0){
+		    	//v4.10 增加 adminNewsUsed
+		    	if(sct.getSiteColumn().getUsed() - SiteColumn.USED_UNABLE == 0 || sct.getSiteColumn().getAdminNewsUsed() - SiteColumn.USED_UNABLE == 0){
 		    		continue;
 		    	}
 		    	
@@ -334,7 +375,8 @@ public class NewsController extends BaseController {
 		    				//理论上不存在
 		    				continue;
 		    			}
-		    			if(s.getUsed() - SiteColumn.USED_UNABLE == 0){
+		    			//v4.10 增加 adminNewsUsed
+		    			if(s.getUsed() - SiteColumn.USED_UNABLE == 0 || s.getAdminNewsUsed() - SiteColumn.USED_UNABLE == 0){
 				    		continue;
 				    	}
 		    			columnTreeSB.append("<dd>"+getLeftNavColumnA(cid, s, sct.getSiteColumn().getId())+"</dd>");
@@ -347,7 +389,7 @@ public class NewsController extends BaseController {
 			}
 		    model.addAttribute("columnTreeNav", columnTreeSB.toString());
 	    }else{
-	    	return error(model, "您现在还没有创建栏目，既然没有栏目，那要管理的内容是属于哪的呢？内容必须有所属的栏目，请先去建立栏目吧");
+	    	return error(model, "您现在还没有创建栏目，既然没有栏目，那要管理的内容是属于哪的呢？内容必须有所属的栏目，请先去建立栏目吧","template/welcome.do");
 	    }
 	    
 	    //将数据记录传到页面以供显示
@@ -370,13 +412,16 @@ public class NewsController extends BaseController {
 	private String getLeftNavColumnA(int cid, SiteColumn sc, int superid){
 		String href = "";
 		
-		if(sc.getType() - SiteColumn.TYPE_NEWS == 0 || sc.getType() - SiteColumn.TYPE_IMAGENEWS == 0){
+		
+		if(sc.getType() - SiteColumn.TYPE_LIST == 0 || sc.getType() - SiteColumn.TYPE_NEWS == 0 || sc.getType() - SiteColumn.TYPE_IMAGENEWS == 0){
+			//判断条件后面带着新闻、图文，纯粹是兼容v4.6以前版本、或者以前的模版
 			href = "listForTemplate.do?cid="+sc.getId();
-		}else if (sc.getType() - SiteColumn.TYPE_PAGE == 0) {
+		}else if (sc.getType() - SiteColumn.TYPE_ALONEPAGE == 0 || sc.getType() - SiteColumn.TYPE_PAGE == 0) {
+			//判断条件后面带着TYPE_PAGE，纯粹是兼容v4.6以前版本、或者以前的模版
 //			href = "newsForTemplate.do?alonePageCid="+sc.getId();	这样直接编辑内容
 			href = "listForTemplate.do?cid="+sc.getId();	//这样先进入列表页面
 		}else{
-			href = "javascript:layer.msg('此栏目类型为超链接，无内容。修改本栏目方式：<br/>1.&nbsp;栏目管理，找到相应的栏目，进行修改<br/>2.&nbsp;首页模式，找到相应的栏目，进行修改');";
+			href = "javascript:layer.msg('此栏目类型未知！修改本栏目方式：<br/>栏目管理，找到相应的栏目，进行修改');";
 		}
 		
 		String script = "";	//如果当前栏目为子栏目，此处要将其父栏目下所有子栏目都显示出来
@@ -476,7 +521,15 @@ public class NewsController extends BaseController {
 		Site site = getSite();
 		String url = "http://"+Func.getDomain(site)+"/";
 		
-		
+		//从栏目缓存中，取出栏目信息
+		Map<Integer, SiteColumn> columnMap = siteColumnService.getSiteColumnMapByCache();
+		SiteColumn sc = columnMap.get(cid);
+		if(sc == null){
+			return error(model, "文章所属栏目未发现");
+		}
+		if(sc.getUseGenerateView() - SiteColumn.USED_UNABLE == 0){
+			return error(model, "该文章所属的栏目，设置了不生成文章详情页，正在跳至列表页",sc.getCodeName()+".html?domain="+site.getDomain()+"."+G.getFirstAutoAssignDomain());
+		}
 		if(site.getClient() - Site.CLIENT_CMS == 0){
 			//如果是CMS模式网站，则需要判断
 			if(Global.get("MASTER_SITE_URL") != null && Global.get("MASTER_SITE_URL").equals("http://wang.market/")){
@@ -500,15 +553,8 @@ public class NewsController extends BaseController {
 		//访问的html文件名，不含后缀
 		String fileName = "";
 		//判断是否是独立页面，若是独立页面，需要用 c +cid .html， 或者使用code.html
-		if(type - SiteColumn.TYPE_PAGE == 0){
+		if(type - SiteColumn.TYPE_PAGE == 0 || type - SiteColumn.TYPE_ALONEPAGE == 0){
 			if(generateUrlRule.equals("code")){
-				//从栏目缓存中，取出栏目信息
-				Map<Integer, SiteColumn> columnMap = siteColumnService.getSiteColumnMapByCache();
-				SiteColumn sc = columnMap.get(cid);
-				if(sc == null){
-					return error(model, "文章所属栏目未发现");
-				}
-				
 				fileName = sc.getCodeName();
 				url = url + sc.getCodeName() + ".html"; 
 			}else{
@@ -521,7 +567,6 @@ public class NewsController extends BaseController {
 		}
 		
 		AliyunLog.addActionLog(newsId, "网站管理后台查看文章页面", url);
-//		return redirect("dns.cgi?domain="+site.getDomain()+"."+G.getFirstAutoAssignDomain()+"&htmlFile="+fileName);
 		return redirect(fileName+".html?domain="+site.getDomain()+"."+G.getFirstAutoAssignDomain());
 	}
 	
@@ -568,7 +613,16 @@ public class NewsController extends BaseController {
 	public String newsChangeColumnForSelectColumn(HttpServletRequest request,Model model,
 			@RequestParam(value = "newsid", required = true) int newsid,
 			@RequestParam(value = "columnid", required = true) int columnid){
-		 //从缓存中调取当前网站栏目
+		SiteColumn siteColumn = siteColumnService.getSiteColumnByCache(columnid);
+//		if(siteColumn == null){
+//			//不存在，也让其能转移吧
+//			//return error(model, "文章所属栏目不存在");
+//		}
+		if(siteColumn != null && (siteColumn.getType() - SiteColumn.TYPE_ALONEPAGE == 0 || siteColumn.getType() - SiteColumn.TYPE_PAGE == 0)){
+			return error(model, "文章所属栏目的类型为独立页面，此种类型栏目内的文章无法转移！");
+		}
+		
+		//从缓存中调取当前网站栏目
 	    //从缓存中获取栏目树列表
     	List<SiteColumnTreeVO> siteColumnTreeVOList = siteColumnService.getSiteColumnTreeVOByCache();
 	    if(siteColumnTreeVOList.size() > 0){
@@ -612,7 +666,7 @@ public class NewsController extends BaseController {
 		if(haveSubColumn){
 			edit = false;
 		}else{
-			if(column.getType() - SiteColumn.TYPE_IMAGENEWS == 0 || column.getType() - SiteColumn.TYPE_NEWS == 0){
+			if(column.getType() - SiteColumn.TYPE_LIST == 0 || column.getType() - SiteColumn.TYPE_IMAGENEWS == 0 || column.getType() - SiteColumn.TYPE_NEWS == 0){
 				edit = true;
 			}else{
 				edit = false;
@@ -647,7 +701,8 @@ public class NewsController extends BaseController {
 		if(news == null){
 			return error("要转移的文章不存在");
 		}
-		if(news.getUserid() - getUserId() != 0){
+		Site site = getSite();
+		if(news.getSiteid() - site.getId() != 0){
 			return error("该文章不属于您，无法操作");
 		}
 		
@@ -656,7 +711,7 @@ public class NewsController extends BaseController {
 		if(column == null){
 			return error("目标栏目不存在");
 		}
-		if(column.getUserid() - getUserId() != 0){
+		if(column.getSiteid() - site.getId() != 0){
 			return error("目标栏目不属于您，无法操作");
 		}
 		
@@ -716,7 +771,7 @@ public class NewsController extends BaseController {
 		String[] hfs = htmlFiles.split(".");
 		String htmlFile = hfs[0];
 		
-		return redirect("site/html.do?htmlFile="+htmlFile);
+		return redirect("sites/html.do?htmlFile="+htmlFile);
 	}
 	
 }

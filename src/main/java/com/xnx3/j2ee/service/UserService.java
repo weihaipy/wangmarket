@@ -145,7 +145,7 @@ public interface UserService {
 	public BaseVO updateSex(HttpServletRequest request);
 	
 	/**
-	 * 修改昵称
+	 * 修改昵称 ，会自动进行 xss 过滤
 	 * @param request GET／POST传入如： nickname=管雷鸣  不允许为空。字符限制1～15个汉字或英文
 	 * @return 若result为SUCCESS，则info返回修改成功的昵称
 	 */
@@ -177,7 +177,7 @@ public interface UserService {
 	 * 				<li>{@link User}.phone、email 手机号、邮箱，如果填写了，会自动判断其唯一性，是否是唯一的</li>
 	 * 			</ul>
 	 * @param request {@link HttpServletRequest}主要拿其中的注册ip等信息
-	 * @return 成功|失败
+	 * @return BaseVO.getResult()  成功|失败， 若成功，getInfo() 获得所创建用户的id，若失败，getInfo() 获得失败原因提示
 	 */
 	public BaseVO createUser(User user ,HttpServletRequest request);
 	

@@ -3,13 +3,9 @@ package com.xnx3.wangmarket.superadmin.controller.agency;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
-
 import javax.annotation.Resource;
 import javax.servlet.http.HttpServletRequest;
-
 import net.sf.json.JSONArray;
-
-import org.apache.shiro.SecurityUtils;
 import org.apache.shiro.authz.annotation.RequiresPermissions;
 import org.apache.shiro.crypto.hash.Md5Hash;
 import org.springframework.stereotype.Controller;
@@ -17,7 +13,6 @@ import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseBody;
-
 import com.aliyun.openservices.log.exception.LogException;
 import com.xnx3.DateUtil;
 import com.xnx3.Lang;
@@ -28,11 +23,9 @@ import com.xnx3.j2ee.Global;
 import com.xnx3.j2ee.entity.User;
 import com.xnx3.j2ee.entity.UserRole;
 import com.xnx3.j2ee.func.Language;
-import com.xnx3.j2ee.func.Log;
 import com.xnx3.j2ee.service.ApiService;
 import com.xnx3.j2ee.service.SqlService;
 import com.xnx3.j2ee.service.UserService;
-import com.xnx3.j2ee.shiro.ShiroFunc;
 import com.xnx3.j2ee.util.IpUtil;
 import com.xnx3.j2ee.util.Page;
 import com.xnx3.j2ee.util.Sql;
@@ -42,13 +35,14 @@ import com.xnx3.wangmarket.admin.Func;
 import com.xnx3.wangmarket.admin.G;
 import com.xnx3.wangmarket.admin.entity.Site;
 import com.xnx3.wangmarket.superadmin.entity.SiteSizeChange;
-import com.xnx3.wangmarket.admin.pluginManage.PluginManage;
-import com.xnx3.wangmarket.admin.pluginManage.SitePluginBean;
 import com.xnx3.wangmarket.admin.service.SiteService;
 import com.xnx3.wangmarket.admin.util.AliyunLog;
 import com.xnx3.wangmarket.admin.vo.SiteVO;
 import com.xnx3.wangmarket.admin.vo.UserVO;
+import com.xnx3.wangmarket.domain.bean.MQBean;
+import com.xnx3.wangmarket.domain.bean.SimpleSite;
 import com.xnx3.wangmarket.superadmin.entity.Agency;
+import com.xnx3.wangmarket.superadmin.entity.AgencyData;
 import com.xnx3.wangmarket.superadmin.service.TransactionalService;
 import com.xnx3.wangmarket.superadmin.util.SiteSizeChangeLog;
 
@@ -83,13 +77,16 @@ public class AgencyUserController extends BaseController {
 		if(agency == null){
 			return error(model, "代理信息出错！");
 		}
-		
+		//上级代理的变长表数据
+		AgencyData parentAgencyData = getParentAgencyData();
 		
 		AliyunLog.addActionLog(agency.getId(), "进入代理商后台首页");
 		User user = sqlService.findById(User.class, getUserId());
 		model.addAttribute("user", user);
 		model.addAttribute("agency", agency);
 		model.addAttribute("parentAgency", getParentAgency());	//上级代理
+		//上级代理的公告内容，要显示出来的
+		model.addAttribute("parentAgencyNotice", parentAgencyData == null ? "":parentAgencyData.getNotice());
 		model.addAttribute("apiKey", apiService.getKey());
 		model.addAttribute("im_kefu_websocketUrl", com.xnx3.wangmarket.im.Global.websocketUrl);
 		model.addAttribute("AGENCYUSER_FIRST_USE_EXPLAIN_URL", Global.get("AGENCYUSER_FIRST_USE_EXPLAIN_URL"));
@@ -238,7 +235,7 @@ public class AgencyUserController extends BaseController {
 		//要创建得网站得user
 		User user = new User();
 		user.setReferrerid(userVO.getUser().getId());
-		user.setUsername(username);
+		user.setUsername(filter(username));
 		user.setPassword(password);
 		
 		Site site = new Site();
@@ -485,6 +482,9 @@ public class AgencyUserController extends BaseController {
 	 */
 	private UserVO regUsersss(User user, HttpServletRequest request, boolean isAgency) {
 		UserVO baseVO = new UserVO();
+		user.setUsername(filter(user.getUsername()));
+		user.setEmail(filter(user.getEmail()));
+		user.setPhone(filter(user.getPhone()));
 		
 		//判断用户名、邮箱、手机号是否有其中为空的
 		if(user.getUsername()==null||user.getUsername().equals("")){
@@ -631,7 +631,7 @@ public class AgencyUserController extends BaseController {
 	
 
 	/**
-	 * 我的下级代理商列表
+	 * 我的下级网站列表
 	 * @param request
 	 * @param model
 	 * @return
@@ -641,7 +641,7 @@ public class AgencyUserController extends BaseController {
 	public String userList(HttpServletRequest request, Model model){
 		Sql sql = new Sql(request);
 		sql.setSearchTable("user");
-		sql.appendWhere("user.referrerid = "+getUserId()+" AND user.authority = "+Global.getInt("ALLOW_USER_REG"));
+		sql.appendWhere("user.referrerid = "+getUserId()+" AND user.authority = "+Global.getInt("USER_REG_ROLE"));
 		sql.setSearchColumn(new String[]{"username","email","phone","userid="});
 		int count = sqlService.count("user", sql.getWhere());
 		Page page = new Page(count, G.PAGE_WAP_NUM, request);
@@ -721,7 +721,11 @@ public class AgencyUserController extends BaseController {
 		AliyunLog.addActionLog(site.getId(), getMyAgency().getName()+"将网站"+site.getName()+"暂停");
 		
 		//更新域名服务器
-		siteService.updateDomainServers(site);
+		MQBean mqBean = new MQBean();
+		mqBean.setType(MQBean.TYPE_STATE);
+//		mqBean.setOldValue(oldDomain);
+		mqBean.setSimpleSite(new SimpleSite(site));
+		siteService.updateDomainServers(mqBean);
 		
 		return success();
 	}
@@ -757,7 +761,10 @@ public class AgencyUserController extends BaseController {
 		AliyunLog.addActionLog(site.getId(), getMyAgency().getName()+"将暂停的网站"+site.getName()+"恢复正常");
 		
 		//更新域名服务器
-		siteService.updateDomainServers(site);
+		MQBean mqBean = new MQBean();
+		mqBean.setType(MQBean.TYPE_STATE);
+		mqBean.setSimpleSite(new SimpleSite(site));
+		siteService.updateDomainServers(mqBean);
 		
 		return success();
 	}
@@ -959,5 +966,6 @@ public class AgencyUserController extends BaseController {
 		model.addAttribute("user", getUser());
 		return "agency/autoCreateSite";
 	}
+	
 	
 }

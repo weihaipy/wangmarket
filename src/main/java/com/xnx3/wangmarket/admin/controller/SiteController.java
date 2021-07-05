@@ -1,7 +1,6 @@
 package com.xnx3.wangmarket.admin.controller;
 
 import java.awt.image.BufferedImage;
-import java.io.File;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.util.List;
@@ -20,6 +19,7 @@ import org.springframework.web.multipart.MaxUploadSizeExceededException;
 import org.springframework.web.multipart.MultipartFile;
 import com.xnx3.DateUtil;
 import com.xnx3.Lang;
+import com.xnx3.StringUtil;
 import com.xnx3.wangmarket.im.service.ImService;
 import com.xnx3.j2ee.Global;
 import com.xnx3.j2ee.entity.User;
@@ -48,13 +48,15 @@ import com.xnx3.wangmarket.admin.service.SiteService;
 import com.xnx3.wangmarket.admin.util.AliyunLog;
 import com.xnx3.wangmarket.admin.vo.SiteDataVO;
 import com.xnx3.wangmarket.admin.vo.SiteVO;
+import com.xnx3.wangmarket.domain.bean.MQBean;
+import com.xnx3.wangmarket.domain.bean.SimpleSite;
 
 /**
  * 公共的
  * @author 管雷鸣
  */
 @Controller
-@RequestMapping("/site")
+@RequestMapping("/sites")
 public class SiteController extends BaseController {
 	@Resource
 	private SqlService sqlService;
@@ -245,7 +247,7 @@ public class SiteController extends BaseController {
 			@RequestParam(value = "bindDomain", required = false , defaultValue="") String bindDomain){
 		BaseVO vo = new BaseVO();
 		
-		bindDomain = filter(bindDomain);
+		bindDomain = StringUtil.filterXss(bindDomain);
 		
 		//v3.0版本更新，若不填写，则是绑定空的字符串，也就是解除之前的域名绑定！
 		if(bindDomain.length() == 0){
@@ -261,11 +263,16 @@ public class SiteController extends BaseController {
 		
 		//v2.1更新，直接从Session中拿site.id
 		Site site = sqlService.findById(Site.class, getSiteId());
+		String oldBindDomain = site.getBindDomain();
 		site.setBindDomain(bindDomain);
 		sqlService.save(site);
 		
 		//更新域名服务器
-		siteService.updateDomainServers(site);
+		MQBean mqBean = new MQBean();
+		mqBean.setType(MQBean.TYPE_BIND_DOMAIN);
+		mqBean.setOldValue(oldBindDomain);
+		mqBean.setSimpleSite(new SimpleSite(site));
+		siteService.updateDomainServers(mqBean);
 		
 		//刷新Session缓存
 		Func.getUserBeanForShiroSession().setSite(site);
@@ -319,6 +326,7 @@ public class SiteController extends BaseController {
 		
 		
 		siteService.getTemplateCommonHtml(getSite(), "站点属性", model);
+		model.addAttribute("autoAssignDomain", G.getFirstAutoAssignDomain());
 		return "site/baseSet";
 	}
 	
@@ -414,16 +422,24 @@ public class SiteController extends BaseController {
 		
 		//v2.1更新，直接从Session中拿siteid
 		Site site = sqlService.findById(Site.class, getSiteId());
+		String oldDomain = site.getDomain(); 
 		site.setDomain(domain);
 		sqlService.save(site);
 		
-		if(G.SITE_DEPLOYMODE_SHARE){
-			//更新域名服务器
-			siteService.updateDomainServers(site);
-		}else{
-			//更新当前的域名服务器
-			siteService.updateDomainServers(site);
-		}
+		//更新域名服务器
+		MQBean mqBean = new MQBean();
+		mqBean.setType(MQBean.TYPE_DOMAIN);
+		mqBean.setOldValue(oldDomain);
+		mqBean.setSimpleSite(new SimpleSite(site));
+		siteService.updateDomainServers(mqBean);
+		
+//		if(G.SITE_DEPLOYMODE_SHARE){
+//			//更新域名服务器
+//			siteService.updateDomainServers(site);
+//		}else{
+//			//更新当前的域名服务器
+//			siteService.updateDomainServers(site);
+//		}
 		
 		//刷新Session缓存
 		Func.getUserBeanForShiroSession().setSite(site);
@@ -674,7 +690,7 @@ public class SiteController extends BaseController {
 			sqlService.save(news);
 			
 			//如果有旧图，删除掉旧的图片
-			if(oldTitlePic.length() > 0 && oldTitlePic.indexOf("http://") == -1){
+			if(oldTitlePic.length() > 0 && (oldTitlePic.indexOf("http://") == -1 && oldTitlePic.indexOf("https://") == -1 && oldTitlePic.indexOf("//") == -1)){
 				AttachmentFile.deleteObject("site/"+site.getId()+"/news/"+oldTitlePic);
 			}
 			
@@ -838,5 +854,26 @@ public class SiteController extends BaseController {
 		return "site/popup_updateEmail";
 	}
 	
+	/**
+	 * 弹出框，绑定自己的域名
+	 */
+	@RequestMapping("popupBindDomain${url.suffix}")
+	public String popupBindDomain(Model model,HttpServletRequest request){
+		model.addAttribute("user", getUser());
+		model.addAttribute("site", getSite());
+		
+		AliyunLog.addActionLog(getSiteId(), "弹出框口，绑定自己的域名");
+		
+		return "site/popup_bindDomain";
+	}
+	
+	
+	/**
+	 * 系统管理-预览网站 v4.9
+	 */
+	@RequestMapping("sitePreview${url.suffix}")
+	public String sitePreview(Model model,HttpServletRequest request){
+		return redirect("index.html?domain="+getSite().getDomain()+"."+G.getFirstAutoAssignDomain());
+	}
 	
 }

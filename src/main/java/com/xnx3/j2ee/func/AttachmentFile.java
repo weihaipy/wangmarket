@@ -1,33 +1,24 @@
 package com.xnx3.j2ee.func;
 
 import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileNotFoundException;
-import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.OutputStream;
 import java.util.ArrayList;
 import java.util.List;
 import javax.servlet.http.HttpServletRequest;
-import org.apache.commons.io.FileUtils;
-import org.apache.commons.io.IOUtils;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.multipart.MultipartHttpServletRequest;
 import com.aliyun.openservices.oss.model.ObjectMetadata;
-import com.aliyun.oss.ClientException;
-import com.aliyun.oss.OSSException;
-import com.aliyun.oss.model.OSSObject;
 import com.xnx3.BaseVO;
-import com.xnx3.ConfigManagerUtil;
 import com.xnx3.Lang;
 import com.xnx3.StringUtil;
-import com.xnx3.file.FileUtil;
+import com.xnx3.FileUtil;
 import com.xnx3.j2ee.Global;
+import com.xnx3.j2ee.func.AttachmentFileMode.AliyunOSSMode;
+import com.xnx3.j2ee.func.AttachmentFileMode.LocalServerMode;
+import com.xnx3.j2ee.func.AttachmentFileMode.StorageModeInterface;
 import com.xnx3.j2ee.vo.UploadFileVO;
 import com.xnx3.media.ImageUtil;
-import com.xnx3.net.OSSUtil;
-import com.xnx3.net.ossbean.PutResult;
 
 /**
  * 附件的操作，如OSS、或服务器本地文件
@@ -43,6 +34,8 @@ public class AttachmentFile {
 	public static final String MODE_ALIYUN_OSS = "aliyunOSS";		//阿里云OSS模式存储
 	public static final String MODE_LOCAL_FILE = "localFile";		//服务器本身磁盘进行附件存储
 	
+	public static StorageModeInterface storageMode;	//会根据数据库中 mode 的值，决定创建什么模式的存储。不可直接使用，需使用 getStorageMode() 获取
+	
 	//文件路径，文件所在。oss则为OSSUtil.url， localFile则是存储到磁盘，访问时自然就是主域名
 	public static String netUrl = null;
 	
@@ -50,12 +43,41 @@ public class AttachmentFile {
 	public static String localFilePath = "";	
 	
 	static{
-		mode = ConfigManagerUtil.getSingleton("systemConfig.xml").getValue("attachmentFile.mode");
-		if(mode == null){
-			mode = MODE_ALIYUN_OSS;
-		}
+		//4.7版本废弃，由数据库加载配置参数，在 initApplication 中初始化
 		
 		localFilePath = Global.getProjectPath();
+	}
+	
+	/**
+	 * 获取当前使用的存储模式，进行存储。
+	 * @return 如果在数据库表 system 表加载成功之前调用此方法，会返回null，当然，这个空指针几乎可忽略。实际使用中不会有这种情况
+	 */
+	public static StorageModeInterface getStorageMode(){
+		if(storageMode == null){
+			//接口未初始化，那么根据当前设定的存储模式，进行初始化创建存储对象
+			if(AttachmentFile.mode == null){
+				//尚未指定 mode , 那么不进行 storageMode 创建
+			}else{
+				//指定了 mode ，那么开始创建相应的storageMode
+				if(mode.equalsIgnoreCase(AttachmentFile.MODE_ALIYUN_OSS)){
+					storageMode = new AliyunOSSMode();
+				}else if (mode.equalsIgnoreCase(AttachmentFile.MODE_LOCAL_FILE)) {
+					storageMode = new LocalServerMode();
+				}
+				
+				/*
+				 * 
+				 * 待扩展
+				 * 
+				 */
+				
+			}
+			
+			if(isMode(MODE_ALIYUN_OSS)){
+				storageMode = new AliyunOSSMode();
+			}
+		}
+		return storageMode;
 	}
 	
 	/**
@@ -134,18 +156,7 @@ public class AttachmentFile {
 	 */
 	public static String netUrl(){
 		if(netUrl == null){
-			if(isMode(MODE_ALIYUN_OSS)){
-				netUrl = OSSUtil.url;
-			}else if(isMode(MODE_LOCAL_FILE)){
-				//如果有当前网站的域名，那么返回域名，格式如"http://www.xnx3.com/" 。如果没有，则返回"/"
-				netUrl = Global.get("ATTACHMENT_FILE_URL");
-				if(netUrl != null && netUrl.length() == 0){
-					netUrl = null;
-				}
-			}else{
-				//未发现什么类型。此种情况是不应该存在的
-				Log.error("当前系统未发现附件网址，请执行install/index.do进行安装，选择附件存储方式");
-			}
+			netUrl = Global.get("ATTACHMENT_FILE_URL");
 		}
 		return netUrl;
 	}
@@ -174,16 +185,7 @@ public class AttachmentFile {
 	 * @param encode 编码格式，可传入 {@link FileUtil#GBK}、{@link FileUtil#UTF8}
 	 */
 	public static void putStringFile(String path, String text, String encode){
-		if(isMode(MODE_ALIYUN_OSS)){
-			OSSUtil.putStringFile(path, text, encode);
-		}else if(isMode(MODE_LOCAL_FILE)){
-			directoryInit(path);
-			try {
-				FileUtil.write(localFilePath+path, text, encode);
-			} catch (IOException e) {
-				e.printStackTrace();
-			}
-		}
+		getStorageMode().putStringFile(path, text, encode);
 	}
 	
 	/**
@@ -222,30 +224,25 @@ public class AttachmentFile {
 	 * @return {@link PutResult} 若失败，返回null
 	 */
 	public static UploadFileVO put(String filePath, String localPath){
+		File localFile = new File(localPath);
+		return put(filePath, localFile);
+	}
+	
+	/**
+	 * 上传本地文件。上传的文件名会被自动重命名为uuid+后缀
+	 * @param filePath 上传后的文件所在的目录、路径，如 "jar/file/"
+	 * @param localFile 本地要上传的文件
+	 * @return {@link PutResult} 若失败，返回null
+	 */
+	public static UploadFileVO put(String filePath, File localFile){
 		UploadFileVO vo = new UploadFileVO();
 		
-		File localFile = new File(localPath);
 		vo = verifyFileMaxLength(localFile);
 		if(vo.getResult() - UploadFileVO.FAILURE == 0){
 			return vo;
 		}
 		
-		if(isMode(MODE_ALIYUN_OSS)){
-			PutResult pr = OSSUtil.put(filePath, localPath);
-			vo = PutResultToUploadFileVO(pr);
-		}else if(isMode(MODE_LOCAL_FILE)){
-			directoryInit(filePath);
-			try {
-				InputStream localInput = new FileInputStream(localFile);
-				//将其保存到服务器磁盘
-				vo = put(filePath, localInput);
-			} catch (FileNotFoundException e) {
-				e.printStackTrace();
-				vo.setBaseVO(UploadFileVO.FAILURE, "上传出错，要上传的文件不存在！");
-			}
-		}
-		
-		return vo;
+		return getStorageMode().put(filePath, localFile);
 	}
 	
 	/**
@@ -257,33 +254,22 @@ public class AttachmentFile {
 	public static UploadFileVO put(String path,InputStream inputStream){
 		UploadFileVO vo = new UploadFileVO();
 		
-		if(isMode(MODE_ALIYUN_OSS)){
-			PutResult pr = OSSUtil.put(path, inputStream);
-			vo = PutResultToUploadFileVO(pr);
-		}else if(isMode(MODE_LOCAL_FILE)){
-			directoryInit(path);
-			File file = new File(localFilePath+path);
-			OutputStream os;
-			try {
-				os = new FileOutputStream(file);
-				int bytesRead = 0;
-				byte[] buffer = new byte[8192];
-				while ((bytesRead = inputStream.read(buffer, 0, 8192)) != -1) {
-					os.write(buffer, 0, bytesRead);
-				}
-				os.close();
-				inputStream.close();
-				
-				vo.setFileName(file.getName());
-				vo.setInfo("success");
-				vo.setPath(path);
-				vo.setUrl(AttachmentFile.netUrl()+path);
-			} catch (IOException e) {
-				e.printStackTrace();
-			}
+		//判断文件大小是否超出最大限制的大小
+		int lengthKB = 0;
+		try {
+			lengthKB = (int) Math.ceil(inputStream.available()/1024);
+		} catch (IOException e) {
+			e.printStackTrace();
 		}
+		vo = verifyFileMaxLength(lengthKB);
+		if(vo.getResult() - UploadFileVO.FAILURE == 0){
+			return vo;
+		}
+		vo.setSize(lengthKB);
 		
-		return vo;
+		UploadFileVO modeVO = getStorageMode().put(path, inputStream);
+		modeVO.setSize(vo.getSize());
+		return modeVO;
 	}
 	
 	/**
@@ -292,33 +278,7 @@ public class AttachmentFile {
 	 * @return 返回其文本内容。若找不到，或出错，则返回 null
 	 */
 	public static String getTextByPath(String path){
-		if(isMode(MODE_ALIYUN_OSS)){
-			OSSObject ossObject = null; 
-			try {
-				ossObject = OSSUtil.getOSSClient().getObject(OSSUtil.bucketName, path);
-			} catch (OSSException e) {
-			} catch (ClientException e) {
-			}
-			
-			if(ossObject == null){
-				return null;
-			}else{
-				try {
-					return IOUtils.toString(ossObject.getObjectContent(), "UTF-8");
-				} catch (IOException e) {
-					e.printStackTrace();
-					return null;
-				}
-			}
-		}else if(isMode(MODE_LOCAL_FILE)){
-			String text = FileUtil.read(localFilePath+path, FileUtil.UTF8);
-			if(text != null && text.length() == 0){
-				text = null;
-			}
-			return text;
-		}
-		
-		return null;
+		return getStorageMode().getTextByPath(path);
 	}
 	
 	/**
@@ -326,12 +286,7 @@ public class AttachmentFile {
 	 * @param filePath 文件所在的路径，如 "jar/file/xnx3.jpg"
 	 */
 	public static void deleteObject(String filePath){
-		if(isMode(MODE_ALIYUN_OSS)){
-			OSSUtil.getOSSClient().deleteObject(OSSUtil.bucketName, filePath);
-		}else if(isMode(MODE_LOCAL_FILE)){
-			FileUtil.deleteFile(localFilePath+filePath);
-		}
-		
+		getStorageMode().deleteObject(filePath);
 	}
 	
 	/**
@@ -340,12 +295,7 @@ public class AttachmentFile {
 	 * @param newFilePath 复制的文件所在的路径，所放的路径。(相对路径，非绝对路径，操作的是当前附件文件目录下)
 	 */
 	public static void copyObject(String originalFilePath, String newFilePath){
-		if(isMode(MODE_ALIYUN_OSS)){
-			OSSUtil.getOSSClient().copyObject(OSSUtil.bucketName, originalFilePath, OSSUtil.bucketName, newFilePath);
-		}else if(isMode(MODE_LOCAL_FILE)){
-			directoryInit(newFilePath);
-			FileUtil.copyFile(localFilePath + originalFilePath, localFilePath + newFilePath);
-		}
+		getStorageMode().copyObject(originalFilePath, newFilePath);
 	}
 	
 	/**
@@ -355,14 +305,45 @@ public class AttachmentFile {
 	 * @param meta {@link com.aliyun.oss.model.ObjectMetadata}其他属性、说明
 	 */
 	public static void putForUEditor(String filePath, InputStream input, ObjectMetadata meta){
-		if(isMode(MODE_ALIYUN_OSS)){
-			com.aliyun.oss.model.ObjectMetadata m = new com.aliyun.oss.model.ObjectMetadata();
-			m.setContentLength(meta.getContentLength());
-			m.setUserMetadata(meta.getUserMetadata());
-			OSSUtil.getOSSClient().putObject(OSSUtil.bucketName, filePath, input, m);
-		}else if(isMode(MODE_LOCAL_FILE)){
-			put(filePath, input);
+		getStorageMode().putForUEditor(filePath, input, meta);
+	}
+	
+	/**
+	 * SpringMVC 上传文件，配置允许上传的文件后缀再 systemConfig.xml 的attachmentFile.allowUploadSuffix.suffix节点
+	 * @param filePath 上传后的文件所在目录、路径，如 "jar/file/"
+	 * @param multipartFile SpringMVC接收的 {@link MultipartFile},若是有上传文件，会自动转化为{@link MultipartFile}保存
+	 * @return {@link UploadFileVO} 若成功，则上传了文件并且上传成功
+	 */
+	public static UploadFileVO uploadFileByMultipartFile(String filePath, MultipartFile multipartFile) {
+		UploadFileVO vo = new UploadFileVO();
+		
+		if(multipartFile == null){
+			vo.setBaseVO(UploadFileVO.FAILURE, Language.show("oss_pleaseSelectUploadFile"));
+			return vo;
 		}
+		
+		InputStream inputStream = null;
+		try {
+			inputStream = multipartFile.getInputStream();
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+		if(inputStream == null){
+			vo.setBaseVO(UploadFileVO.FAILURE, Language.show("oss_pleaseSelectUploadFile"));
+			return vo;
+		}
+		
+		//获取上传的文件的后缀
+		String fileSuffix = null;
+		fileSuffix = Lang.findFileSuffix(multipartFile.getOriginalFilename());
+		
+		if(!allowUploadSuffix(fileSuffix)){
+			vo.setBaseVO(UploadFileVO.FAILURE, Language.show("oss_uploadFileNotInSuffixList"));
+			return vo;
+		}
+		
+		vo = uploadFileByInputStream(filePath, inputStream, fileSuffix);
+		return vo;
 	}
 	
 	/**
@@ -377,13 +358,6 @@ public class AttachmentFile {
 		
 		if(multipartFile == null){
 			vo.setBaseVO(UploadFileVO.FAILURE, Language.show("oss_pleaseSelectUploadFile"));
-			return vo;
-		}
-		
-		//判断文件大小是否超出最大限制的大小
-		int lengthKB = (int) Math.ceil(multipartFile.getSize()/1024);
-		vo = verifyFileMaxLength(lengthKB);
-		if(vo.getResult() - UploadFileVO.FAILURE == 0){
 			return vo;
 		}
 		
@@ -422,6 +396,29 @@ public class AttachmentFile {
 	}
 	
 	/**
+	 * 上传文件
+	 * @param filePath 上传后的文件所在的目录、路径，如 "jar/file/"
+	 * @param inputStream 要上传的文件的数据流
+	 * @param fileSuffix 上传的文件的后缀名
+	 * @return {@link UploadFileVO}
+	 */
+	public static UploadFileVO uploadFileByInputStream(String filePath, InputStream inputStream, String fileSuffix) {
+		UploadFileVO vo = new UploadFileVO();
+		
+		if(!allowUploadSuffix(fileSuffix)){
+			vo.setBaseVO(UploadFileVO.FAILURE, Language.show("oss_uploadFileNotInSuffixList"));
+			return vo;
+		}
+		
+		if(inputStream == null){
+			vo.setBaseVO(UploadFileVO.FAILURE, Language.show("oss_pleaseSelectUploadFile"));
+			return vo;
+		}
+		
+		return put(filePath, "."+fileSuffix, inputStream);
+	}
+	
+	/**
 	 * 上传图片文件
 	 * @param filePath 上传后的文件所在的目录、路径，如 "jar/file/"
 	 * @param inputStream 图片的数据流
@@ -431,7 +428,7 @@ public class AttachmentFile {
 	 */
 	public static UploadFileVO uploadImageByInputStream(String filePath, InputStream inputStream, String fileSuffix, int maxWidth) {
 		UploadFileVO vo = new UploadFileVO();
-		
+
 		if(!allowUploadSuffix(fileSuffix)){
 			vo.setBaseVO(UploadFileVO.FAILURE, Language.show("oss_uploadFileNotInSuffixList"));
 			return vo;
@@ -492,7 +489,7 @@ public class AttachmentFile {
 	/**
 	 * 上传文件
 	 * @param filePath 上传后的文件所在的目录、路径，如 "jar/file/"
-	 * @param fileName 上传的文件名，如“xnx3.jar”；主要拿里面的后缀名。也可以直接传入文件的后缀名如“.jar”
+	 * @param fileName 上传的文件名，如“xnx3.jar”；主要拿里面的后缀名。也可以直接传入文件的后缀名如“.jar。新的文件名会是自动生成的 uuid+后缀”
 	 * @param inputStream {@link InputStream}
 	 * @return {@link PutResult} 若失败，返回null
 	 */
@@ -504,29 +501,14 @@ public class AttachmentFile {
 			vo.setBaseVO(UploadFileVO.FAILURE, "上传的文件名(后缀)校验失败！传入的为："+fileName+"，允许传入的值如：a.jpg或.jpg");
 			return vo;
 		}
-		String fileSuffix=com.xnx3.Lang.subString(fileName, ".", null, 3);	//获得文件后缀，以便重命名
+		
+		String fileSuffix = StringUtil.subString(fileName, ".", null, 3);	//获得文件后缀，以便重命名
         String name=Lang.uuid()+"."+fileSuffix;
         String path = filePath+name;
         return put(path, inputStream);
 	}
 	
-	/**
-	 * 将阿里云OSS的上传结果 {@link PutResult}转化为 {@link UploadFileVO}结果
-	 * @param pr 阿里云OSS的上传结果 {@link PutResult}
-	 * @return {@link UploadFileVO}
-	 */
-	public static UploadFileVO PutResultToUploadFileVO(PutResult pr){
-		UploadFileVO vo = new UploadFileVO();
-		if(pr == null || pr.getFileName() == null || pr.getUrl() == null){
-			vo.setBaseVO(UploadFileVO.FAILURE, "上传失败！");
-		}else{
-			vo.setFileName(pr.getFileName());
-			vo.setInfo("success");
-			vo.setPath(pr.getPath());
-			vo.setUrl(pr.getUrl());
-		}
-		return vo;
-	}
+
 	
 	/**
 	 * SpringMVC 上传图片文件，配置允许上传的文件后缀再 systemConfig.xml 的AttachmentFile节点
@@ -556,59 +538,38 @@ public class AttachmentFile {
 	}
 	
 	/**
+	 * SpringMVC 上传文件，配置允许上传的文件后缀再 systemConfig.xml 的AttachmentFile节点
+	 * @param filePath 上传后的文件所在的目录、路径，如 "jar/file/"
+	 * @param request SpringMVC接收的 {@link MultipartFile},若是有上传文件，会自动转化为{@link MultipartFile}保存
+	 * @param formFileName form表单上传的单个文件，表单里上传文件的文件名
+	 * @return {@link UploadFileVO} 若成功，则上传了文件并且上传成功
+	 */
+	public static UploadFileVO uploadFile(String filePath,HttpServletRequest request,String formFileName) {
+		UploadFileVO uploadFileVO = new UploadFileVO();
+		if (request instanceof MultipartHttpServletRequest) {
+			MultipartHttpServletRequest multipartRequest = (MultipartHttpServletRequest) request;  
+			List<MultipartFile> list = multipartRequest.getFiles(formFileName);  
+			if(list.size()>0 && !list.get(0).isEmpty()){
+				MultipartFile multi = list.get(0);
+				uploadFileVO = uploadFileByMultipartFile(filePath, multi);
+			}else{
+				uploadFileVO.setResult(UploadFileVO.NOTFILE);
+				uploadFileVO.setInfo(Language.show("oss_uploadNotFile"));
+			}
+	    }else{
+	    	uploadFileVO.setResult(UploadFileVO.NOTFILE);
+			uploadFileVO.setInfo(Language.show("oss_uploadNotFile"));
+	    }
+		return uploadFileVO;
+	}
+	
+	/**
 	 * 获取某个目录（文件夹）占用空间的大小
 	 * @param path 要计算的目录(文件夹)，如 jar/file/
 	 * @return 计算出来的大小。单位：字节，B。  千分之一KB
 	 */
 	public static long getDirectorySize(String path){
-		if(isMode(MODE_ALIYUN_OSS)){
-			return OSSUtil.getFolderSize(path);
-		}else if(isMode(MODE_LOCAL_FILE)){
-			directoryInit(path);
-			return FileUtils.sizeOfDirectory(new File(localFilePath+path));
-		}
-		
-		return 0;
+		return getStorageMode().getDirectorySize(path);
 	}
 	
-	/**
-	 * 目录检测，检测是否存在。若不存在，则自动创建目录。适用于使用本地磁盘进行存储
-	 * @param path 要检测的目录，相对路径，如 jar/file/  创建到file文件，末尾一定加/     或者jar/file/a.jar创建懂啊file文件
-	 */
-	public static void directoryInit(String path){
-		if(path == null){
-			return;
-		}
-		
-		//windows取的路径是\，所以要将\替换为/
-		if(path.indexOf("\\") > 1){
-			path = StringUtil.replaceAll(path, "\\\\", "/");
-		}
-		
-		if(path.length() - path.lastIndexOf("/") > 1){
-			//path最后是带了具体文件名的，把具体文件名过滤掉，只留文件/结尾
-			path = path.substring(0, path.lastIndexOf("/")+1);
-		}
-		
-		//如果目录或文件不存在，再进行创建目录的判断
-		if(!FileUtil.exists(path)){
-			String[] ps = path.split("/");
-			
-			String xiangdui = "";
-			//length-1，/最后面应该就是文件名了，所以要忽略最后一个
-			for (int i = 0; i < ps.length; i++) {
-				if(ps[i].length() > 0){
-					xiangdui = xiangdui + ps[i]+"/";
-					if(!FileUtil.exists(localFilePath+xiangdui)){
-						File file = new File(localFilePath+xiangdui);
-						file.mkdir();
-					}
-				}
-			}
-		}
-	}
-	
-	public static void main(String[] args) {
-		directoryInit("sitse/1/new/a.jpg");
-	}
 }

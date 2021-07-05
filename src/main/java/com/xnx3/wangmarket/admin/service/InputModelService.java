@@ -24,10 +24,18 @@ public interface InputModelService {
 	
 	/**
 	 * 根据输入模型的模型代码,获取自己网站内这个模型
-	 * @param codeName 模型代码
+	 * @param codeName 模型代码，inputModel.codeName
 	 * @return 若返回null，则没有这个模型
 	 */
 	public InputModel getInputModelByCodeName(String codeName);
+	
+	/**
+	 * 根据栏目,获取这个栏目所用的输入模型
+	 * @param siteColumn 栏目。其实只用到了里面的 codeName、siteid
+	 * @return 若返回null，则没有这个模型
+	 */
+	public InputModel getInputModelBySiteColumn(SiteColumn siteColumn);
+	
 	
 	/**
 	 * 根据输入模型的id,获取这个模型的内容。
@@ -67,6 +75,13 @@ public interface InputModelService {
 	 * @return 当前网站的输入模型列表
 	 */
 	public Map<Integer, InputModel> getInputModelBySession();
+	
+	/**
+	 * 从 session 缓存中，加载指定网站的输入模型列表。若缓存中没有，则从数据库加载到缓存，然后再返回。
+	 * @return 当前网站的输入模型列表
+	 */
+	public Map<Integer, InputModel> getInputModelBySession(int siteid);
+	
 	
 	/**
 	 * 获取系统默认的输入模型的内容

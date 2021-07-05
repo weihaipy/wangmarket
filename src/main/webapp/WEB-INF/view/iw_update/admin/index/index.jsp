@@ -1,3 +1,4 @@
+<%@page import="com.xnx3.wangmarket.Authorization"%>
 <%@page import="com.xnx3.wangmarket.admin.G"%>
 <%@page import="com.xnx3.j2ee.entity.User"%>
 <%@page import="com.xnx3.j2ee.Global"%>
@@ -5,18 +6,14 @@
 <%@ taglib uri="http://java.sun.com/jsp/jstl/core" prefix="c" %>  
 <%@ taglib uri="http://www.xnx3.com/java_xnx3/xnx3_tld" prefix="x" %>
 <%@ taglib prefix="shiro" uri="http://shiro.apache.org/tags" %>
-<%
-String path = request.getContextPath();
-String basePath = request.getScheme()+"://"+request.getServerName()+":"+request.getServerPort()+path+"/";
-%>
 <jsp:include page="../../../iw/common/head.jsp">
 	<jsp:param name="title" value="管理后台"/>
 </jsp:include>
-<script src="http://res.weiunity.com/js/fun.js"></script>
+<script src="${STATIC_RESOURCE_PATH}js/fun.js"></script>
 <script>
 var masterSiteUrl = '<%=Global.get("MASTER_SITE_URL") %>'; 
 </script>
-<script src="<%=basePath %>js/admin/commonedit.js?v=<%=G.VERSION %>"></script>
+<script src="/js/admin/commonedit.js?v=<%=G.VERSION %>"></script>
 
 <style>
 body{margin: 0;padding: 0px;height: 100%;overflow: hidden;}
@@ -60,7 +57,7 @@ body{margin: 0;padding: 0px;height: 100%;overflow: hidden;}
 	<ul class="">
 		<shiro:hasPermission name="adminUser"> 
 			<li class="layui-nav-item">
-				<a href="javascript:loadUrl('<%=basePath %>admin/user/list.do');">
+				<a href="javascript:loadUrl('/admin/user/list.do');">
 					<i class="layui-icon firstMenuIcon">&#xe612;</i>
 					<span class="firstMenuFont">用户管理</span>
 				</a>
@@ -68,7 +65,7 @@ body{margin: 0;padding: 0px;height: 100%;overflow: hidden;}
 		</shiro:hasPermission>
 		<shiro:hasPermission name="adminSite">
 			<li class="layui-nav-item">
-				<a href="javascript:loadUrl('<%=basePath %>admin/site/list.do');">
+				<a href="javascript:loadUrl('/admin/site/list.do');">
 					<i class="layui-icon firstMenuIcon">&#xe857;</i>
 					<span class="firstMenuFont">网站管理</span>
 				</a>
@@ -76,7 +73,7 @@ body{margin: 0;padding: 0px;height: 100%;overflow: hidden;}
 		</shiro:hasPermission>
 		<shiro:hasPermission name="adminSite">
 			<li class="layui-nav-item">
-				<a href="javascript:loadUrl('<%=basePath %>admin/news/list.do');">
+				<a href="javascript:loadUrl('/admin/news/list.do');">
 					<i class="layui-icon firstMenuIcon">&#xe632;</i>
 					<span class="firstMenuFont">文章管理</span>
 				</a>
@@ -84,7 +81,7 @@ body{margin: 0;padding: 0px;height: 100%;overflow: hidden;}
 		</shiro:hasPermission>
 		<shiro:hasPermission name="adminMessage"> 
 			<li class="layui-nav-item">
-				<a href="javascript:loadUrl('<%=basePath %>admin/message/list.do');">
+				<a href="javascript:loadUrl('/admin/message/list.do');">
 					<i class="layui-icon firstMenuIcon">&#xe63a;</i>
 					<span class="firstMenuFont">站内信息</span>
 				</a>
@@ -99,48 +96,51 @@ body{margin: 0;padding: 0px;height: 100%;overflow: hidden;}
 				</a>
 				<dl class="layui-nav-child">
 					<shiro:hasPermission name="adminBbsClassList">
-						<dd><a class="subMenuItem" href="javascript:loadUrl('<%=basePath %>/admin/bbs/classList.do');">分类板块</a></dd>
+						<dd><a class="subMenuItem" href="javascript:loadUrl('/admin/bbs/classList.do');">分类板块</a></dd>
 					</shiro:hasPermission>
 					<shiro:hasPermission name="adminBbsPostList"> 
-						<dd><a class="subMenuItem" href="javascript:loadUrl('<%=basePath %>/admin/bbs/postList.do');">帖子管理</a></dd>
+						<dd><a class="subMenuItem" href="javascript:loadUrl('/admin/bbs/postList.do');">帖子管理</a></dd>
 					</shiro:hasPermission>
 					<shiro:hasPermission name="adminBbsPostCommentList">
-						<dd><a class="subMenuItem" href="javascript:loadUrl('<%=basePath %>/admin/bbs/commentList.do');">回帖管理</a></dd>
+						<dd><a class="subMenuItem" href="javascript:loadUrl('/admin/bbs/commentList.do');">回帖管理</a></dd>
 					</shiro:hasPermission>
 				</dl>
 			</li>
 		</shiro:hasPermission>
 		
-		<% if(com.xnx3.wangmarket.domain.G.aliyunLogUtil != null){ %>		
 		<shiro:hasPermission name="adminLog"> 
-			<li class="layui-nav-item">
+			<li class="layui-nav-item" id="rizhitongji" style="display:none;">
 				<a href="javascript:;">
 					<i class="layui-icon firstMenuIcon">&#xe62c;</i>
 					<span class="firstMenuFont">日志统计</span>
 				</a>
 				<dl class="layui-nav-child">
 					<shiro:hasPermission name="adminLogList">
-						<dd><a class="subMenuItem" href="javascript:loadUrl('<%=basePath %>admin/log/list.do');">用户动作</a></dd>
+						<dd><a class="subMenuItem" href="javascript:loadUrl('/admin/log/list.do');">用户动作</a></dd>
 					</shiro:hasPermission>
 					<shiro:hasPermission name="adminLog">
-						<dd><a class="subMenuItem" href="javascript:loadUrl('<%=basePath %>admin/requestLog/fangwenList.do');">访问记录</a></dd>
+						<dd><a class="subMenuItem" href="javascript:loadUrl('/admin/requestLog/fangwenList.do');">访问记录</a></dd>
 					</shiro:hasPermission>
 					<shiro:hasPermission name="adminSmsLog"> 
-						<dd><a class="subMenuItem" href="javascript:loadUrl('<%=basePath %>admin/smslog/list.do');">手机验证</a></dd>
+						<dd><a class="subMenuItem" href="javascript:loadUrl('/admin/smslog/list.do');">手机验证</a></dd>
 					</shiro:hasPermission>
 					<shiro:hasPermission name="adminPayLog"> 
-						<dd><a class="subMenuItem" href="javascript:loadUrl('<%=basePath %>admin/payLog/list.do');">在线支付</a></dd>
+						<dd><a class="subMenuItem" href="javascript:loadUrl('/admin/payLog/list.do');">在线支付</a></dd>
 					</shiro:hasPermission>
 					<shiro:hasPermission name="adminLogCartogram">
-						<dd><a class="subMenuItem" href="javascript:loadUrl('<%=basePath %>admin/log/cartogram.do');">动作统计</a></dd>
+						<dd><a class="subMenuItem" href="javascript:loadUrl('/admin/log/cartogram.do');">动作统计</a></dd>
 					</shiro:hasPermission>
 					<shiro:hasPermission name="adminLog">
-						<dd><a class="subMenuItem" href="javascript:loadUrl('<%=basePath %>admin/requestLog/fangwentongji.do');">访问统计</a></dd>
+						<dd><a class="subMenuItem" href="javascript:loadUrl('/admin/requestLog/fangwentongji.do');">访问统计</a></dd>
 					</shiro:hasPermission>
 				</dl>
 			</li>
 		</shiro:hasPermission>
-		<% } %>
+		<script>
+		if(${useDomainLog}){
+			document.getElementById('rizhitongji').style.display='';
+		}
+		</script>
 		
 		<shiro:hasPermission name="adminRole"> 
 			<li class="layui-nav-item">
@@ -150,10 +150,10 @@ body{margin: 0;padding: 0px;height: 100%;overflow: hidden;}
 				</a>
 				<dl class="layui-nav-child">
 					<shiro:hasPermission name="adminRoleRoleList">
-						<dd><a class="subMenuItem" href="javascript:loadUrl('<%=basePath %>admin/role/roleList.do');">角色管理</a></dd>
+						<dd><a class="subMenuItem" href="javascript:loadUrl('/admin/role/roleList.do');">角色管理</a></dd>
 					</shiro:hasPermission>
 					<shiro:hasPermission name="adminRolePermissionList"> 
-						<dd><a class="subMenuItem" href="javascript:loadUrl('<%=basePath %>admin/role/permissionList.do');">资源管理</a></dd>
+						<dd><a class="subMenuItem" href="javascript:loadUrl('/admin/role/permissionList.do');">资源管理</a></dd>
 					</shiro:hasPermission>
 				</dl>
 			</li>
@@ -168,20 +168,29 @@ body{margin: 0;padding: 0px;height: 100%;overflow: hidden;}
 				<dl class="layui-nav-child">
 					<shiro:hasPermission name="adminOnlineUserList">
 						<!-- 
-						<dd><a class="subMenuItem" href="javascript:loadUrl('<%=basePath %>admin/user/onlineUserList.do');">在线会员</a></dd>
+						<dd><a class="subMenuItem" href="javascript:loadUrl('/admin/user/onlineUserList.do');">在线会员</a></dd>
 						 -->
 					</shiro:hasPermission>
 					<shiro:hasPermission name="adminSystemVariable"> 
-						<dd><a class="subMenuItem" href="javascript:loadUrl('<%=basePath %>admin/system/variableList.do?orderBy=lasttime_ASC');">系统变量</a></dd>
+						<dd><a class="subMenuItem" href="javascript:loadUrl('/admin/system/variableList.do?orderBy=lasttime_ASC');">系统变量</a></dd>
 					</shiro:hasPermission>
 				</dl>
 			</li>
 		</shiro:hasPermission>
 		
+		
 		<!-- agency start -->
 		<shiro:hasPermission name="agencyIndex">
+			<li class="layui-nav-item" id="agencyNotice">
+				<a href="javascript:loadUrl('/agency/systemSet.do');">
+					<i class="layui-icon firstMenuIcon">&#xe620;</i>
+					<span class="firstMenuFont">系统设置</span>
+				</a>
+			</li>
+		</shiro:hasPermission>
+		<shiro:hasPermission name="agencyIndex">
 			<li class="layui-nav-item">
-				<a href="javascript:loadUrl('<%=basePath %>agency/userList.do');">
+				<a href="javascript:loadUrl('/agency/userList.do');">
 					<i class="layui-icon firstMenuIcon">&#xe857;</i>
 					<span class="firstMenuFont">网站管理</span>
 				</a>
@@ -190,7 +199,7 @@ body{margin: 0;padding: 0px;height: 100%;overflow: hidden;}
 		
 		<shiro:hasPermission name="agencyIndex">
 			<li class="layui-nav-item" id="useSMS" style="display:none;">
-				<a href="javascript:loadUrl('<%=basePath %>agency/autoCreateSite.do');">
+				<a href="javascript:loadUrl('/agency/autoCreateSite.do');">
 					<i class="layui-icon firstMenuIcon">&#xe857;</i>
 					<span class="firstMenuFont">自助建站</span>
 				</a>
@@ -204,17 +213,17 @@ body{margin: 0;padding: 0px;height: 100%;overflow: hidden;}
 		
 		<shiro:hasPermission name="agencyUserList">
 			<li class="layui-nav-item">
-				<a href="javascript:loadUrl('<%=basePath %>agency/subAgencyList.do?orderBy=expiretime_ASC');">
+				<a href="javascript:loadUrl('/agency/subAgencyList.do?orderBy=expiretime_ASC');">
 					<i class="layui-icon firstMenuIcon">&#xe612;</i>
 					<span class="firstMenuFont">下级代理</span>
 				</a>
 			</li>
 		</shiro:hasPermission>
 		
-		<% if(com.xnx3.wangmarket.domain.G.aliyunLogUtil != null){ %>
+		<% if(com.xnx3.wangmarket.domain.Log.aliyunLogUtil != null){ %>
 		<shiro:hasPermission name="AgencyNormalAdd">
 			<li class="layui-nav-item">
-				<a href="javascript:loadUrl('<%=basePath %>agency/actionLogList.do');">
+				<a href="javascript:loadUrl('/agency/actionLogList.do');">
 					<i class="layui-icon firstMenuIcon">&#xe62a;</i>
 					<span class="firstMenuFont">操作日志</span>
 				</a>
@@ -222,7 +231,7 @@ body{margin: 0;padding: 0px;height: 100%;overflow: hidden;}
 		</shiro:hasPermission>
 		<shiro:hasPermission name="AgencyNormalAdd">
 			<li class="layui-nav-item">
-				<a href="javascript:loadUrl('<%=basePath %>agency/siteSizeLogList.do');">
+				<a href="javascript:loadUrl('/agency/siteSizeLogList.do');">
 					<i class="layui-icon firstMenuIcon">&#xe62a;</i>
 					<span class="firstMenuFont">站币日志</span>
 				</a>
@@ -239,7 +248,7 @@ body{margin: 0;padding: 0px;height: 100%;overflow: hidden;}
 			</a>
 			<dl class="layui-nav-child">
 				<dd><a id="im_menu" class="subMenuItem" href="javascript:openKefuSet();">基本设置</a></dd>
-				<dd><a id="im_hostory" class="subMenuItem" href="javascript:loadUrl('<%=basePath %>im/hostoryChatList.do');">历史咨询</a></dd>
+				<dd><a id="im_hostory" class="subMenuItem" href="javascript:loadUrl('/im/hostoryChatList.do');">历史咨询</a></dd>
 			</dl>
 		</li>
 		<% } %>
@@ -268,15 +277,15 @@ body{margin: 0;padding: 0px;height: 100%;overflow: hidden;}
 		
 
 		<li class="layui-nav-item">
-			<a href="<%=basePath %>user/logout.do">
+			<a href="/user/logout.do">
 				<i class="layui-icon firstMenuIcon">&#xe633;</i>
 				<span class="firstMenuFont">退出登陆</span>
 			</a>
 		</li>
 		
 		
-		<!-- 未授权用户，请尊重作者劳动成果，保留我方版权标示及链接！授权参见：http://www.wang.market/5541.html -->
-		<% if(G.copyright){ %>
+		<!-- 未授权用户，请尊重作者劳动成果，保留我方版权标示及链接！授权参见：http://www.wang.market/price.html -->
+		<% if(Authorization.copyright){ %>
 		<li class="layui-nav-item" style="position: absolute;bottom: 0px; text-align:center;">
 			<a href="http://www.wang.market" target="_black">
 				<span class="firstMenuFont">power by 网市场</span>
@@ -306,7 +315,7 @@ function loadUrl(url){
 }
 
 //加载登录后的默认页面
-loadUrl('<%=basePath %>${indexUrl}');
+loadUrl('/${indexUrl}');
 
 
 //右侧弹出提示
@@ -317,7 +326,7 @@ function rightTip(){
 	  ,btn: ['我知道了'] //可以无限个按钮
 	  ,content:  '若我方对你有用，我们愿与各行业进行合作、资源交换！网站可由代理平台在线开通，或由用户自己自助开通完全无人干预！<a href="http://www.wang.market/index.html#join" target="_black" style="text-decoration: underline;color: blue;">合作方式</a><br/>'+
 	   			'若您只是想要个此类网站，你可关注我们微信公众号： wangmarket'+
-	   			'<div style="text-align:center;"><img src="http://res.weiunity.com/image/weixin_gzh.png" style="width:150px; height:150px;" /></div>'+
+	   			'<div style="text-align:center;"><img src="${STATIC_RESOURCE_PATH}image/weixin_gzh.png" style="width:150px; height:150px;" /></div>'+
 	   			'回复“要网站”即可免费得到一个跟此一样的网站。无任何广告！'+
 	   			'另外您有什么问题、资源交换、各种合作意向，都可关注后跟我们在线沟通咨询<br/>'+
 	   			'我们官网：<a href="http://www.wang.market" target="_black" style="text-decoration: underline;color: blue;">www.wang.market</a><br/>'+
@@ -329,7 +338,7 @@ function rightTip(){
 }
 //只有用户名带有ceshi的才会弹出合作联系的提示。当然，如果是已授权的用户，是不弹出这个带有版权的说明的
 if('${user.username}'.indexOf('ceshi') > -1){
-	<% if(G.copyright){ %>
+	<% if(Authorization.copyright){ %>
 		setTimeout("rightTip()",2000);
 	<% } %>
 }
@@ -337,7 +346,7 @@ if('${user.username}'.indexOf('ceshi') > -1){
 
 <% if(com.xnx3.wangmarket.im.Global.kefuMNSUtil != null){ %>
 <!-- IM start -->
-<script src="http://res.weiunity.com/layui217/layui.js"></script>
+<script src="${STATIC_RESOURCE_PATH}module/layui/layui.js"></script>
 <script>
 var id = ${user.id};	//用户的id，用户唯一
 var password = "${password }";	//加密后密码
@@ -349,33 +358,6 @@ var socketUrl = '${im_kefu_websocketUrl}'; //socket的url请求地址
 <!-- IM end -->
 <% } %>
 
-<script>
-//当前系统版本检测，可做成自己系统的
-function systemVersionCheck(){
-	$.getJSON("../../getNewVersion.do",function(result){
-		if(result.findNewVersion){
-			layer.open({
-				  title: '版本提示'
-				  ,offset: 'rb'
-				  ,time: 3000
-				  ,content: '发现新版本&nbsp;v'+result.newVersion
-				  ,btn: ['查看']
-				  ,shadeClose: true
-				  ,yes: function(index, layero){
-					window.open(result.previewUrl);
-				  }
-			});
-		}
-	});
-}
-</script>
-
-<shiro:hasPermission name="adminSystem"> 
-<!-- 只有总管理后台，才会有版本检测 -->
-<script>
-	window.setTimeout(systemVersionCheck,3000); 
-</script>
-</shiro:hasPermission>
 
 </body>
 </html>

@@ -29,10 +29,11 @@ try{
 	}
 }catch(err){}
 
+//v4.8 废弃 masterSiteUrl 参数，以更好适配 https
 //判断是否加载此js之前，定义了 masterSiteUrl
-if(typeof(masterSiteUrl)=="undefined" || masterSiteUrl.length < 2){
-	var masterSiteUrl = 'http://wang.market/';
-}
+//if(typeof(masterSiteUrl)=="undefined" || masterSiteUrl.length < 2){
+//	var masterSiteUrl = 'http://wang.market/';
+//}
 //判断是否加载此js之前，定义了 AUTO_ASSIGN_DOMAIN(system表的泛解析域名)，自动分配的二级域名，以及要绑定顶级域名的CNAME记录指向
 if(typeof(autoAssignDomain)=="undefined" || autoAssignDomain.length < 2){
 	var autoAssignDomain = 'wang.market';
@@ -46,7 +47,7 @@ function updateFooterSiteInfo(){
 		title:'修改联系信息', 
 		area: ['600px', '460px'],
 		shadeClose: true, //开启遮罩关闭
-		content: masterSiteUrl+'site/popupSiteUpdate.do'
+		content: '/sites/popupSiteUpdate.do'
 	});
 }
 
@@ -56,7 +57,7 @@ function updateFooterSiteInfo(){
 function updateIndexHtmlSource(){
 //	var updateIndexHtmlSourceVar = layer.open({  
 //        type: 2,  
-//        content: masterSiteUrl+'site/editPageSource.do?fileName=index',
+//        content: '/site/editPageSource.do?fileName=index',
 //        area: ['320px', '195px'],
 //        maxmin: true,
 //        shadeClose: true, //开启遮罩关闭
@@ -79,7 +80,7 @@ function updateHtmlSource(fileName){
 function htmlSource(isNewHtml, fileName){
 	var updateIndexHtmlSourceVar = layer.open({  
         type: 2,  
-        content: masterSiteUrl+'sitePc/editPageSource.do?fileName='+fileName+(isNewHtml=='1' ? "&newHtml=1":""),
+        content: '/sitePc/editPageSource.do?fileName='+fileName+(isNewHtml=='1' ? "&newHtml=1":""),
         area: ['320px', '195px'],
         maxmin: true,
         shadeClose: true, //开启遮罩关闭
@@ -94,7 +95,7 @@ function htmlSource(isNewHtml, fileName){
 function openMoneyIndex(){
 	var openMoneyIndexVar = layer.open({  
         type: 2,  
-        content: masterSiteUrl+'currency/index.do',
+        content: '/currency/index.do',
         area: ['320px', '195px'],
         maxmin: true,
         shadeClose: true, //开启遮罩关闭
@@ -109,7 +110,7 @@ function openMoneyIndex(){
 function openMyInviteList(){
 	layer.open({  
         type: 2,  
-        content: masterSiteUrl+'currency/inviteList.do',
+        content: '/currency/inviteList.do',
         area: ['390px', '500px'],
         maxmin: true,
         shadeClose: true, //开启遮罩关闭
@@ -124,7 +125,7 @@ function openCustomPageList(){
 		closeBtn: 1, //不显示关闭按钮
 		anim: 3, area:['600px','680px'],
 		shadeClose: true, //开启遮罩关闭
-		content: masterSiteUrl+'page/customPageList.do',
+		content: '/page/customPageList.do',
 		title: false,
 		closeBtn: 1
 	});
@@ -135,7 +136,7 @@ function openCustomPageList(){
 function openFangWenTongJi(){
 	var fangwentongjiVar = layer.open({  
         type: 2,  
-        content: masterSiteUrl+'requestLog/index.do',
+        content: '/requestLog/index.do',
         area: ['320px', '195px'],
         maxmin: true,
         shadeClose: true, //开启遮罩关闭
@@ -150,7 +151,7 @@ function openColumnList(){
 		type: 2,
 		anim: 3, area:['733px','600px'],
 		shadeClose: true, //开启遮罩关闭
-		content: masterSiteUrl+'column/popupList.do',
+		content: '/column/popupList.do',
 		title: false,
 		closeBtn: 1
 	});
@@ -163,7 +164,7 @@ function openColumnListForTemplate(){
 		type: 2,
 		anim: 3, area:['733px','600px'],
 		shadeClose: true, //开启遮罩关闭
-		content: masterSiteUrl+'column/popupListForTemplate.do',
+		content: '/column/popupListForTemplate.do',
 		title: false,
 		closeBtn: 1
 	});
@@ -177,7 +178,7 @@ function openTemplateVarList(){
 		closeBtn: 1, //不显示关闭按钮
 		anim: 3, area:['600px','680px'],
 		shadeClose: true, //开启遮罩关闭
-		content: masterSiteUrl+'template/templateVarList.do',
+		content: '/template/templateVarList.do',
 		title: '模版变量列表',
 		closeBtn: 1
 	});
@@ -185,18 +186,18 @@ function openTemplateVarList(){
 }
 
 //打开当前网站的模版页面列表，适用于自定义模版类型
-function openTemplatePageList(){
-	var openTemplatePageListVar = layer.open({
-		type: 2,
-		closeBtn: 1, //不显示关闭按钮
-		anim: 3, area:['600px','680px'],
-		shadeClose: true, //开启遮罩关闭
-		content: masterSiteUrl+'template/templatePageList.do',
-		title: '模版页面列表',
-		closeBtn: 1
-	});
-	layer.full(openTemplatePageListVar);
-}
+//function openTemplatePageList(){
+//	var openTemplatePageListVar = layer.open({
+//		type: 2,
+//		closeBtn: 1, //不显示关闭按钮
+//		anim: 3, area:['600px','680px'],
+//		shadeClose: true, //开启遮罩关闭
+//		content: '/template/templatePageList.do',
+//		title: '模版页面列表',
+//		closeBtn: 1
+//	});
+//	layer.full(openTemplatePageListVar);
+//}
 
 //打开网站基本信息弹出框
 function openJiBenXinXi(){
@@ -205,7 +206,7 @@ function openJiBenXinXi(){
 		closeBtn: 1, //不显示关闭按钮
 		anim: 3, area:['390px','260px'],
 		shadeClose: true, //开启遮罩关闭
-		content: masterSiteUrl+'site/popupBasicInfo.do',
+		content: '/sites/popupBasicInfo.do',
 		title: false,
 		closeBtn: 1
 	});
@@ -231,7 +232,7 @@ function wenTiFanKuiSubmit(){
 		return;
 	}
 	var wtfk_load_index = layer.load(3);
-	$.post(masterSiteUrl+"site/wenTiFanKui.do", { "text":document.getElementById('wentifankui_textarea').value },
+	$.post("/sites/wenTiFanKui.do", { "text":document.getElementById('wentifankui_textarea').value },
 	   function(data){
 			layer.close(wtfk_load_index);
 			if(data.result != '1'){
@@ -250,7 +251,7 @@ function updateBanner(){
 		title:'修改Banner图', 
 		area: ['380px', '290px'],
 		shadeClose: true, //开启遮罩关闭
-		content: masterSiteUrl+'carousel/popupCarouselUpdate.do'
+		content: '/carousel/popupCarouselUpdate.do'
 	});
 }
 
@@ -261,14 +262,14 @@ function updateIndexBanner(){
 		title:'修改首页Banner图', 
 		area: ['380px', '290px'],
 		shadeClose: true, //开启遮罩关闭
-		content: masterSiteUrl+'carousel/popupCarouselUpdate.do?type=2'
+		content: '/carousel/popupCarouselUpdate.do?type=2'
 	});
 }
 
 //更改模版，需 getSubWindowsParam()支持
 function updateTemplate(){
 	$.showLoading('模版更换中');
-	window.location.href=masterSiteUrl+'site/templateSave.do?siteid='+site['id']+'&client=pc&templateId='+getSubWindowsParam();
+	window.location.href='/sites/templateSave.do?siteid='+site['id']+'&client=pc&templateId='+getSubWindowsParam();
 }
 
 //修改关于我们的图
@@ -278,7 +279,7 @@ function updateAboutUsImage(){
 		title:'修改关于我们的图片', 
 		area: ['380px', '410px'],
 		shadeClose: true, //开启遮罩关闭
-		content: masterSiteUrl+'site/popupAboutUsImageUpdate.do'
+		content: '/sites/popupAboutUsImageUpdate.do'
 	});
 }
 
@@ -292,14 +293,14 @@ function updateSiteColumn(siteColumnId){
 		title:'修改栏目', 
 		area: ['460px', '220px'],
 		shadeClose: true, //开启遮罩关闭
-		content: masterSiteUrl+'column/popupColumnUpdate.do?id='+siteColumnId
+		content: '/column/popupColumnUpdate.do?id='+siteColumnId
 	});
 }
 
 //修改网站的关键词
 function updateSiteKeywords(){
 	$.showLoading();
-	$.post(masterSiteUrl+"site/getSiteData.do", function(result){
+	$.post("/sites/getSiteData.do", function(result){
 		 $.hideLoading();
 		if(result.result != '1'){
 			alert(result.info);
@@ -310,7 +311,7 @@ function updateSiteKeywords(){
 				title: "更改网站 keywords",
 				onOK: function(text) {
 					iw.loading("修改中");
-					$.post(masterSiteUrl+"site/updateKeywords.do?siteid="+site['id']+"&keywords="+text, function(data){
+					$.post("/sites/updateKeywords.do?siteid="+site['id']+"&keywords="+text, function(data){
 						iw.loadClose();
 						if(data.result == '1'){
 							iw.msgSuccess("修改成功");
@@ -333,7 +334,7 @@ function updateSiteKeywords(){
 function updateSiteName(){
 	
 	iw.loading("加载中");    //显示“操作中”的等待提示
-	$.post(masterSiteUrl+"site/getSiteData.do", function(data){
+	$.post("/sites/getSiteData.do", function(data){
 	    iw.loadClose();    //关闭“操作中”的等待提示
 	    if(data.result == '1'){
 			$.prompt({
@@ -342,7 +343,7 @@ function updateSiteName(){
 			 onOK: function(text) {
 				 iw.loading("修改中");
 				 
-				 $.post(masterSiteUrl+"site/updateName.do", {"name":text }, function(data){
+				 $.post("/sites/updateName.do", {"name":text }, function(data){
 					 	iw.loadClose();
 					 	if(data.result == '1'){
 					 		iw.msgSuccess("操作成功");
@@ -394,7 +395,7 @@ function updateSiteName(){
 function updateSiteDataDescription(){
 	iw.loading("加载中");
 	
-	$.post(masterSiteUrl+"site/getSiteData.do", function(data){
+	$.post("/sites/getSiteData.do", function(data){
 		iw.loadClose();
 		if(data.result == '1'){
 			$.prompt({
@@ -402,7 +403,7 @@ function updateSiteDataDescription(){
 				 title: "更改网站首页描述 Description",
 				 onOK: function(text) {
 					 iw.loading("修改中");
-					 $.post(masterSiteUrl+"site/updateDescription.do", { "siteid": site['id'], "description":text }, function(data2){
+					 $.post("/sites/updateDescription.do", { "siteid": site['id'], "description":text }, function(data2){
 					 	iw.loadClose();
 						if(data2.result != '1'){
 							iw.msgFailure(data2.info);
@@ -425,7 +426,7 @@ function updateSiteDataDescription(){
 //刷新首页
 function refreshIndex(){
 	$.showLoading('重新创建中');
-	window.location.href=masterSiteUrl+'site/refreshIndex.do';
+	window.location.href='/sites/refreshIndex.do';
 }
 
 //更改二级域名,需 getSubWindowsParam()支持
@@ -447,7 +448,7 @@ function updateDomain(){
 		 }else{
 			 if(text != getSubWindowsParam()){
 				 iw.loading("修改中");
-				 $.post(masterSiteUrl+"site/updateDomain.do?siteid="+site['id']+"&domain="+text, function(data){
+				 $.post("/sites/updateDomain.do?siteid="+site['id']+"&domain="+text, function(data){
 				 	iw.loadClose();
 				 	if(data.result == '1'){
 				 		iw.msgSuccess("修改成功");
@@ -467,62 +468,26 @@ function updateDomain(){
 
 //更改自己绑定的域名,需 getSubWindowsParam()支持
 function updateBindDomain(){
-	$.prompt({
-	 text: "将域名做CNAME记录解析至“domain."+autoAssignDomain+"”" +
-	 		"<br/><span style=\"padding-left:50px; font-size:12px;\">帮助：<a href=\"https://help.aliyun.com/knowledge_detail/39788.html\" target=\"_black\">阿里云域名</a>&nbsp;|&nbsp;<a href=\"http://jingyan.baidu.com/article/86fae346f9f62e3c49121a90.html?st=5&net_type=&bd_page_type=1&os=1&rst=&word=wang.market\" target=\"_black\">新网域名</a></span>&nbsp;|&nbsp;<span style=\"padding-left:5px;\" onmouseover=\"bindDomainWindow_mouseOver();\" id=\"bindDomainWindow_mouseOver_id\" onmouseout=\"bindDomainWindow_mouseOut();\"><a href=\"javascript:;\">其他帮助</a></span>" +
-	 		"<br/>绑定顶级域名之后，网站便会默认使用顶级域名访问。" +
-	 		"<br/>如果您想解除顶级域名绑定，可<button onclick=\"removeDomainBind();\" style=\"padding:2px; cursor:pointer;\">点击此处取消绑定</button>" +
-	 		"<b><br/>中文域名无法绑定、改完后要等待5分钟之后才会生效</b>",
-	 title: "绑定自己的顶级域名",
-	 onOK: function(text) {
-		 if(text == getSubWindowsParam()){
- 			//域名没有变动，无需改动
-		 }else{
-			 iw.loading("修改中");
-			 $.post(masterSiteUrl+"site/updateBindDomain.do?siteid="+site['id']+"&bindDomain="+text, function(data){
-			 	iw.loadClose();
-			 	if(data.result == '1'){
-			 		iw.msgSuccess("操作成功");
-			  	}else if(data.result == '0'){
-			  		iw.msgFailure(data.info);
-			  	}else{
-			  		iw.msgFailure();
-			  	}
-			 });
-		}
-	 },
-	 input: getSubWindowsParam()
+	layer.open({
+		type: 2,
+		closeBtn: 1, //不显示关闭按钮
+		area:['438px','400px'],
+		shadeClose: false, //开启遮罩关闭
+		content: '/sites/popupBindDomain.do',
+		scrollbar: false,
+		title: '您需要以下这几步，来进行绑定域名',
+		closeBtn: 1
 	});
-}
-//绑定顶级域名窗口，CNAME解析的帮助及说明
-var bindDomainWindow_mouseOver_tipindex = 0;
-function bindDomainWindow_mouseOver(){
-	bindDomainWindow_mouseOver_tipindex = layer.tips("" +
-			"<div style=\"text-align:left;\">例如，我有一个域名 “www.guanleiming.com” 要绑定到这个网站" +
-			"<br/><b>第一步：</b>将这个域名的CNAME记录指向&nbsp;“&nbsp;domain."+autoAssignDomain+"&nbsp;”&nbsp;" +
-			"<div style=\"padding-left:60px;\">" +
-			"	不用备案，香港服务器：domain."+autoAssignDomain +
-			"	<br/>必须备案，国内服务器：beian."+autoAssignDomain+"</div>" +
-			"<b>第二步：</b>在这里填入要绑定的域名 &nbsp;“&nbsp;www.guanleiming.com&nbsp;”&nbsp;" +
-			"<br/><b>第三步：</b>等待5分钟左右，即可访问&nbsp;“&nbsp;www.guanleiming.com&nbsp;”&nbsp;</div>", '#bindDomainWindow_mouseOver_id', {
-		tips: [1, '#0FA6A8'], //还可配置颜色
-		area: ['600px','auto'],
-		time:0,
-		tipsMore: true
-	});
-}
-function bindDomainWindow_mouseOut(){
-	layer.close(bindDomainWindow_mouseOver_tipindex);
 }
 
 
 /**
- * 高级自定义模版使用，用于生成整站HTML内容
+ * CMS网站，生成整站
  */
-function shengchengzhengzhan(){
+function generatehtml(){
 	$.showLoading('整站生成中<br/>此过程可能时间比较长，请耐心等待');
 	
-	$.post(masterSiteUrl+"template/refreshForTemplate.do", function(data){
+	$.post("/template/refreshForTemplate.do", function(data){
 		$.hideLoading();
 		if(data.result == '1'){
 			iw.msgSuccess("操作成功");
@@ -568,26 +533,24 @@ function versionUpdateRemind(version){
 					+'<div style="width:100%; text-align:center; font-size:22px;"> <span style="font-size:28px; padding-right:15px;">V&nbsp;'+version+'</span>建站系统升级了！ 更新功能如下</div><br>'
 					+'<style> .xnx3_gxc li{list-style-type: decimal;} </style>'
 					+'<ul style="list-style-type: decimal;" class="xnx3_gxc">'
-					+'<li>总管理后台，功能插件下，增加 数据字典 插件，此插件只限已授权用户，数据库为 mysql 的使用。</li>'
-					+'<li>网站访问时，增加未生成整站的提示引导。当用户创建CMS模式网站后，未生成整站就访问时，不再出现通用的 404 提示页面，而是出现引导页，引导用户登陆总管理后台，点击生成整站按钮。</li>'
-					+'<li>网站访问时，增加未绑定域名的提示引导。当用户已解析到服务器，但网站管理后台中未进行绑定域名时，不再出现通用的 404 提示页面，而是出现引导页，引导用户登陆总管理后台，进入系统管理-网站设置-绑定域名，进行绑定。</li>'
-					+'<li>将 api 插件优化，放到 com.xnx3.wangmarket.plugin 下，并将 api接口由 /api/.. 调整为 /plugin/api/..</li>'
-					+'<li>CMS模式建站，文章调用标签增加 {news.text} ，可以随时随地方便调取文章内容显示。参见 http://tag.wscso.com/2939.html</li>'
-					+'<li>总管理后台，安全考虑，文章管理中，弹出窗查看文章详情时，去除文章封面图的显示。</li>'
-					+'<li>修复之前升级导致的404错误页面丢失问题。</li>'
-					+'<li>去除 systemConfig.xml 配置文件的 OSS.imageSuffixList 配置，允许上传后缀配置统一改为 attachmentFile.allowUploadSuffix 中，并默认增加常见后缀： png、jpg、jpeg、gif、bmp、flv、swf、mkv、avi、rm、rmvb、mpeg、mpg、ogg、ogv、mov、wmv、mp4、webm、mp3、wav、mid、rar、zip、tar、gz、7z、bz2、cab、iso、doc、docx、xls、xlsx、ppt、pptx、pdf、txt、md、xml，以让网站有更多扩展。</li>'
-					+'<li>修复网站管理后台中，内容管理-添加标题图片上传时，若图过大，上传失败时，提示异常的问题，改为明确提示：请上传xx大小以内的文件。这个大小的配置，位于配置文件 application.properties 中。</li>'
-					+'<li>CMS模式网站管理后台中，输入模型，增加js 的 save() 方法，当用户点击文章的 “保存” 按钮时，会先执行 自定义的 save() 方法，在执行保存文章操作。另外，save() 方法若返回false，则不会进行保存操作。</li>'
-					+'<li>优化输入模型中的图片输入，当栏目类型不是图文模式时 {titlepicImage} 不会调出任何数据，改为无论是栏目类型是什么，此标签都可正常调取数据。</li>'
-					+'<li>CMS模式管理后台，输入模型中，增加 {news.titlepic} 的标签调用，可调取 news 数据表中原始的 titlepic 的值</li>'
-					+'<li>修复代理平台续费延期，过期时间溢出问题。</li>'
-					+'<li>优化网站管理后台中，内容管理的内容编辑器（UEditor）的美观度</li>'
-					+'<li>修复域名绑定时，若将泛解析的子域名作为一个独立域名进行绑定时，绑定无效的问题。</li>'
-					+'<li>项目最初始运行起来后，访问时，增加欢迎页面，安装指引，不再是404页面, 优化初始安装页面</li>'
-					+'<li>修复列表排序的 orderBy 函数，排序时会丢失get参数的问题。</li>'
+					+'<li>项目支持局域网无网络环境的私有部署。layui、editor、htmledit等三方js插件，全部植入项目内部。</li>'
+					+'<li>增加是否使用云端模版库的控制，总管理后台中，可以通过插件-模版库进行设置，可设置不使用云端模版库，只使用自己的私有模版库。（模版库插件仅限授权用户可用）</li>'
+					+'<li>增加文章发布时的插件机制，可以在插件中对文章保存时的所有文章相关内容进行拦截修改。如利用此，可做关键字替换等。</li>'
+					+'<li>网站管理后台中，栏目管理中，编辑栏目时，增加 显示 一栏，可设置该栏目是否在模版中的动态栏目调用中，调取栏目列表时是否显示。默认显示；增加该栏目在内容管理中是否显示，默认显示。原本的设置项废弃。</li>'
+					+'<li>网站管理后台中，添加文章时，不再自动生成sitemap.xml，以免数据量大时，新增文章卡顿比较大的问题。</li>'
+					+'<li>输入模型 inputModelService 增加可以根据站点id获取其输入模型，而非一定登陆 登陆页面。</li>'
+					+'<li>管理后台登陆页面，登陆的标题，去掉默认自带的“云建站”三个字。可以自行在总管理后台修改站点名字增加这几个字。</li>'
+					+'<li>网站栏目的名称，长度有40扩大到60个字符</li>'
+					+'<li>修复模版页面、模版变量中，用动态栏目代码调取顶级栏目时，排序无效的问题。</li>'
+					+'<li>增加是否使用云端模版库的控制，总管理后台中，可以通过插件-模版库进行设置，可设置不使用云端模版库，只使用自己的私有模版库。</li>'
+					+'<li>登陆页面去除背景特效。避免其占CPU过多造成卡顿。</li>'
+					+'<li>优化默认系统输入模型，引入的 UE 的js、css资源有相对路径改为从根目录开始找。避免二次开发等出现问题留坑。</li>'
+					+'<li>修复文章中存在某个特殊字符导致文章无法正常保存、修改的问题。</li>'
+					+'<li>修复生成整站时，若是news有数据，news_data无数据时，{news.title}等文章标签会原样输出的问题，改为输出空字符串</li>'
+					+'<li>模版列表 /template.do 修复私有模版库的模版预览图片不显示问题</li>'
+					
 					//+'<li>增加个人博客模版，可用于个人博客、空间等。电脑网站通用。适用于CMS模式。 预览:  <a href="http://qiye8.wscso.com" target="_black" style="text-decoration: underline; color:#999">http://qiye8.wscso.com</a></li>'
 					+'</ul></div>'
-					
 					
 				,success: function(layero){
 				}
@@ -606,23 +569,35 @@ function exportTemplate(){
 	  btn: ['立即导出','取消'] //按钮
 	}, function(){
 		layer.close(dtp_confirm);
-		window.open(masterSiteUrl+"template/exportTemplate.do");
+		window.open("/template/exportTemplate.do");
 	}, function(){
 	});
 }
 
-//v3.0 解除绑定顶级域名
-function removeDomainBind(){
-	iw.loading("解绑中...");    //显示“操作中”的等待提示
-	$.post(masterSiteUrl+"site/updateBindDomain.do?bindDomain=", function(data){
-	    iw.loadClose();    //关闭“操作中”的等待提示
-	    if(data.result == '1'){
-	        iw.msgSuccess('解绑成功');
-	     }else if(data.result == '0'){
-	         iw.msgFailure(data.info);
-	     }else{
-	         iw.msgFailure();
-	     }
+
+/** v4.4
+ * 绑定域名、解绑域名
+ * domain 要绑定的域名。 若为空字符串，则是解除绑定
+ */
+function bindDomain(domain){
+	if(domain.length == 0){
+		parent.iw.loading("解绑中");
+	}else{
+		parent.iw.loading("绑定中");
+	}
+	$.post("/sites/updateBindDomain.do?siteid="+site['id']+"&bindDomain="+domain, function(data){
+		parent.iw.loadClose();
+		if(data.result == '1'){
+			if(domain.length == 0){
+				parent.iw.msgSuccess("已解绑");
+			}else{
+				parent.iw.msgSuccess("绑定成功");
+			}
+	 	}else if(data.result == '0'){
+	 		parent.iw.msgFailure(data.info);
+	 	}else{
+	 		parent.iw.msgFailure();
+	 	}
 	});
 }
 
@@ -634,7 +609,7 @@ function openKefuSet(){
 		closeBtn: 1, //不显示关闭按钮
 		area:['430px','470px'],
 		shadeClose: false, //开启遮罩关闭
-		content: masterSiteUrl+'im/set.do',
+		content: '/im/set.do',
 		scrollbar: false,
 		title: '网站在线客服设置',
 		closeBtn: 1
@@ -651,7 +626,7 @@ function updatePassword(){
 	}, function(value, index, elem){
 		layer.close(index);
 		iw.loading('更改中...');
-		$.post(masterSiteUrl+"site/updatePassword.do", { "newPassword": value},
+		$.post("/sites/updatePassword.do", { "newPassword": value},
 			function(data){
 				iw.loadClose();
 				if(data.result != '1'){

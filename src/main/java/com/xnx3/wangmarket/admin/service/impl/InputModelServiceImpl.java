@@ -4,6 +4,9 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+
 import javax.annotation.Resource;
 import org.springframework.stereotype.Service;
 import com.xnx3.file.FileUtil;
@@ -47,18 +50,14 @@ public class InputModelServiceImpl implements InputModelService {
 		}
 		return inputModelList;
 	}
-
-	/**
-	 * 获取当前session中的输入模型。若没有，则从数据库中加载当前网站的输入模型数据到Session中。
-	 */
-	public Map<Integer, InputModel> getInputModelBySession(){
+	
+	public Map<Integer, InputModel> getInputModelBySession(int siteid){
 		Map<Integer, InputModel> map = Func.getUserBeanForShiroSession().getInputModelMap();
 		
 		//若是第一次使用，需要从数据库加载输入模型数据
 		if(map == null){
 			map = new HashMap<Integer, InputModel>();
 			
-			int siteid = Func.getUserBeanForShiroSession().getSite().getId();
 			List<InputModel> inputModelList = sqlDAO.findBySqlQuery("SELECT * FROM input_model WHERE siteid = " + siteid, InputModel.class);
 			if(inputModelList != null && inputModelList.size() > 0){
 				//如果取到了当前网站有自己的输入模型，那么将其加入session缓存中
@@ -71,6 +70,14 @@ public class InputModelServiceImpl implements InputModelService {
 		}
 		
 		return map;
+	}
+	
+	/**
+	 * 获取当前session中的输入模型。若没有，则从数据库中加载当前网站的输入模型数据到Session中。
+	 */
+	public Map<Integer, InputModel> getInputModelBySession(){
+		int siteid = Func.getUserBeanForShiroSession().getSite().getId();
+		return getInputModelBySession(siteid);
 	}
 
 	public InputModel getInputModelById(int modelId) {
@@ -124,7 +131,7 @@ public class InputModelServiceImpl implements InputModelService {
 	public String getInputModelTextByIdForNews(NewsInit newsInit) {
 		SiteColumn siteColumn = newsInit.getSiteColumn();
 		
-		InputModel im = getInputModelByCodeName(siteColumn.getInputModelCodeName());
+		InputModel im = getInputModelBySiteColumn(siteColumn);
 		String text = null;	//输入模型中获取的自定义模型具体内容
 		
 		//如果该栏目没有输入模型，那么用默认的
@@ -142,24 +149,67 @@ public class InputModelServiceImpl implements InputModelService {
 			text = text.replaceAll(Template.regex("siteColumn.type"), siteColumn.getType()+"");
 			
 			News news = newsInit.getNews();
+			
+			//v4.6 ，过滤掉所有自定义扩展的值调用
+			Map<String, Boolean> map = new HashMap<String, Boolean>();
+			if(text.indexOf("extend.") > 0){
+				Pattern p = Pattern.compile(Template.regex("news.extend.(\\w*?)"));
+		        Matcher m = p.matcher(text);
+		        while(m.find()){
+		        	map.put(m.group(1), true);
+		        }
+			}
+			
 			if(news == null || news.getId() == null){
 				text = text.replaceAll(Template.regex("news.title"), "");
 				text = text.replaceAll(Template.regex("titlepicImage"), "");
 				text = text.replaceAll(Template.regex("news.titlepic"), "");
 				text = text.replaceAll(Template.regex("text"), "");
 				text = text.replaceAll(Template.regex("news.intro"), "");
+				text = text.replaceAll(Template.regex("news.reserve1"), "");
+				text = text.replaceAll(Template.regex("news.reserve2"), "");
+				
+				//v4.6,自定义 extend
+				if(map.size() > 0){
+					for (Map.Entry<String, Boolean> entry : map.entrySet()) {
+			        	text = text.replaceAll(Template.regex("news.extend."+entry.getKey()), "");
+			        }
+				}
+				
 			}else{
-				text = text.replaceAll(Template.regex("news.title"), news.getTitle());
-				text = text.replaceAll(Template.regex("titlepicImage"), newsInit.getTitlepicImage());
-				text = text.replaceAll(Template.regex("news.titlepic"), news.getTitlepic());
-				text = text.replaceAll(Template.regex("news.intro"), news.getIntro());
+				text = Template.replaceAll(text, Template.regex("news.title"), news.getTitle());
+				text = Template.replaceAll(text, Template.regex("titlepicImage"), newsInit.getTitlepicImage());
+				text = Template.replaceAll(text, Template.regex("news.titlepic"), news.getTitlepic());
+				text = Template.replaceAll(text, Template.regex("news.intro"), news.getIntro());
+				text = Template.replaceAll(text, Template.regex("news.reserve1"), news.getReserve1());
+				text = Template.replaceAll(text, Template.regex("news.reserve2"), news.getReserve2());
+				
 				//此处因replaceAll容易出问题，而且｛text｝也只会出现一次，所以直接换为了replace
-				text = text.replace("{text}", newsInit.getNewsText());
+				text = Template.replaceAll(text, Template.regex("text"), newsInit.getNewsDataBean().getText());
+				
+				//v4.6,自定义 extend
+				if(map.size() > 0){
+					for (Map.Entry<String, Boolean> entry : map.entrySet()) {
+						text = Template.replaceAll(text, Template.regex("news.extend."+entry.getKey()), newsInit.getNewsDataBean().getExtendJson(entry.getKey()));
+			        }
+				}
 			}
 		}
 		return text;
 	}
-
+	
+	public InputModel getInputModelBySiteColumn(SiteColumn siteColumn) {
+		Map<Integer, InputModel> map = getInputModelBySession(siteColumn.getSiteid());
+		for (Integer key : map.keySet()) {
+		   InputModel inputModel = map.get(key);
+		   //此处判断将 siteColumn.getCodeName 改为 siteColumn.getInputModelCodeName()  ，感谢 https://gitee.com/tendeness 提出问题所在
+		   if(inputModel != null && inputModel.getCodeName() != null && inputModel.getCodeName().equals(siteColumn.getInputModelCodeName())){
+			   return inputModel;
+		   }
+		}
+		return null;
+	}
+	
 	public InputModel getInputModelByCodeName(String codeName) {
 		Map<Integer, InputModel> map = getInputModelBySession();
 		for (Integer key : map.keySet()) {
